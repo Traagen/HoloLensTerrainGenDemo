@@ -56,7 +56,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="HolographicAppMain.cpp" />
     <ClCompile Include="AppView.cpp" />
     <ClCompile Include="Content\SpatialInputHandler.cpp">
       <Filter>Content</Filter>
@@ -64,10 +63,13 @@
     <ClCompile Include="Content\SpinningCubeRenderer.cpp">
       <Filter>Content</Filter>
     </ClCompile>
+    <ClCompile Include="HoloLensTerrainGenDemoMain.cpp" />
+    <ClCompile Include="Content\Terrain.cpp">
+      <Filter>Content</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="HolographicAppMain.h" />
     <ClInclude Include="AppView.h" />
     <ClInclude Include="Content\SpatialInputHandler.h">
       <Filter>Content</Filter>
@@ -76,6 +78,10 @@
       <Filter>Content</Filter>
     </ClInclude>
     <ClInclude Include="Content\ShaderStructures.h">
+      <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="HoloLensTerrainGenDemoMain.h" />
+    <ClInclude Include="Content\Terrain.h">
       <Filter>Content</Filter>
     </ClInclude>
   </ItemGroup>

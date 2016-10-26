@@ -1,28 +1,13 @@
 #pragma once
 
-//
-// Comment out this preprocessor definition to disable all of the
-// sample content.
-//
-// To remove the content after disabling it:
-//     * Remove the unused code from your app's Main class.
-//     * Delete the Content folder provided with this template.
-//
-#define DRAW_SAMPLE_CONTENT
-
 #include "Common\DeviceResources.h"
 #include "Common\StepTimer.h"
-
-#ifdef DRAW_SAMPLE_CONTENT
-#include "Content\SpinningCubeRenderer.h"
-#include "Content\SpatialInputHandler.h"
-#endif
+//#include "Content\SpatialInputHandler.h"
+#include "Content\Terrain.h"
 
 // Updates, renders, and presents holographic content using Direct3D.
-namespace HoloLensTerrainGenDemo
-{
-    class HoloLensTerrainGenDemoMain : public DX::IDeviceNotify
-    {
+namespace HoloLensTerrainGenDemo {
+    class HoloLensTerrainGenDemoMain : public DX::IDeviceNotify {
     public:
         HoloLensTerrainGenDemoMain(const std::shared_ptr<DX::DeviceResources>& deviceResources);
         ~HoloLensTerrainGenDemoMain();
@@ -66,30 +51,20 @@ namespace HoloLensTerrainGenDemo
         // and when tearing down AppMain.
         void UnregisterHolographicEventHandlers();
 
-#ifdef DRAW_SAMPLE_CONTENT
-        // Renders a colorful holographic cube that's 20 centimeters wide. This sample content
-        // is used to demonstrate world-locked rendering.
-        std::unique_ptr<SpinningCubeRenderer>                           m_spinningCubeRenderer;
-
         // Listens for the Pressed spatial input event.
-        std::shared_ptr<SpatialInputHandler>                            m_spatialInputHandler;
-#endif
-
+   //     std::shared_ptr<SpatialInputHandler>                            m_spatialInputHandler;
+		// Our terrain
+		std::unique_ptr<Terrain>				                        m_terrain;
         // Cached pointer to device resources.
         std::shared_ptr<DX::DeviceResources>                            m_deviceResources;
-
         // Render loop timer.
         DX::StepTimer                                                   m_timer;
-
         // Represents the holographic space around the user.
         Windows::Graphics::Holographic::HolographicSpace^               m_holographicSpace;
-
         // SpatialLocator that is attached to the primary camera.
         Windows::Perception::Spatial::SpatialLocator^                   m_locator;
-
         // A reference frame attached to the holographic camera.
         Windows::Perception::Spatial::SpatialStationaryFrameOfReference^ m_referenceFrame;
-
         // Event registration tokens.
         Windows::Foundation::EventRegistrationToken                     m_cameraAddedToken;
         Windows::Foundation::EventRegistrationToken                     m_cameraRemovedToken;

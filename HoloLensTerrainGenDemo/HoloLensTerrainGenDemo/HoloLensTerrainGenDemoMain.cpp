@@ -19,28 +19,18 @@ using namespace std::placeholders;
 
 // Loads and initializes application assets when the application is loaded.
 HoloLensTerrainGenDemoMain::HoloLensTerrainGenDemoMain(const std::shared_ptr<DX::DeviceResources>& deviceResources) :
-    m_deviceResources(deviceResources)
-{
+    m_deviceResources(deviceResources) {
     // Register to be notified if the device is lost or recreated.
     m_deviceResources->RegisterDeviceNotify(this);
 }
 
-void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holographicSpace)
-{
+void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holographicSpace) {
     UnregisterHolographicEventHandlers();
 
     m_holographicSpace = holographicSpace;
 
-    //
-    // TODO: Add code here to initialize your holographic content.
-    //
-
-#ifdef DRAW_SAMPLE_CONTENT
-    // Initialize the sample hologram.
-    m_spinningCubeRenderer = std::make_unique<SpinningCubeRenderer>(m_deviceResources);
-
-    m_spatialInputHandler = std::make_unique<SpatialInputHandler>();
-#endif
+//	m_spatialInputHandler = std::make_unique<SpatialInputHandler>();
+	m_terrain = std::make_unique<Terrain>(m_deviceResources, 1.0f, 1.0f, 4);
 
     // Use the default SpatialLocator to track the motion of the device.
     m_locator = SpatialLocator::GetDefault();
@@ -94,33 +84,27 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
     //   occurred.
 }
 
-void HoloLensTerrainGenDemoMain::UnregisterHolographicEventHandlers()
-{
-    if (m_holographicSpace != nullptr)
-    {
+void HoloLensTerrainGenDemoMain::UnregisterHolographicEventHandlers() {
+    if (m_holographicSpace != nullptr) {
         // Clear previous event registrations.
 
-        if (m_cameraAddedToken.Value != 0)
-        {
+        if (m_cameraAddedToken.Value != 0) {
             m_holographicSpace->CameraAdded -= m_cameraAddedToken;
             m_cameraAddedToken.Value = 0;
         }
 
-        if (m_cameraRemovedToken.Value != 0)
-        {
+        if (m_cameraRemovedToken.Value != 0) {
             m_holographicSpace->CameraRemoved -= m_cameraRemovedToken;
             m_cameraRemovedToken.Value = 0;
         }
     }
 
-    if (m_locator != nullptr)
-    {
+    if (m_locator != nullptr) {
         m_locator->LocatabilityChanged -= m_locatabilityChangedToken;
     }
 }
 
-HoloLensTerrainGenDemoMain::~HoloLensTerrainGenDemoMain()
-{
+HoloLensTerrainGenDemoMain::~HoloLensTerrainGenDemoMain() {
     // Deregister device notification.
     m_deviceResources->RegisterDeviceNotify(nullptr);
 
@@ -128,8 +112,7 @@ HoloLensTerrainGenDemoMain::~HoloLensTerrainGenDemoMain()
 }
 
 // Updates the application state once per frame.
-HolographicFrame^ HoloLensTerrainGenDemoMain::Update()
-{
+HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
     // Before doing the timer update, there is some work to do per-frame
     // to maintain holographic rendering. First, we will get information
     // about the current frame.
@@ -152,21 +135,16 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update()
     // for creating the stereo view matrices when rendering the sample content.
     SpatialCoordinateSystem^ currentCoordinateSystem = m_referenceFrame->CoordinateSystem;
 
-#ifdef DRAW_SAMPLE_CONTENT
     // Check for new input state since the last frame.
-    SpatialInteractionSourceState^ pointerState = m_spatialInputHandler->CheckForInput();
-    if (pointerState != nullptr)
-    {
+/*    SpatialInteractionSourceState^ pointerState = m_spatialInputHandler->CheckForInput();
+    if (pointerState != nullptr) {
         // When a Pressed gesture is detected, the sample hologram will be repositioned
         // two meters in front of the user.
-        m_spinningCubeRenderer->PositionHologram(
-            pointerState->TryGetPointerPose(currentCoordinateSystem)
-            );
-    }
-#endif
-
-    m_timer.Tick([&] ()
-    {
+		// Once we've figured out how to attach the terrain to a surface, we won't want to do this.
+  //      m_terrain->PositionHologram(pointerState->TryGetPointerPose(currentCoordinateSystem));
+    }*/
+	
+    m_timer.Tick([&] () {
         //
         // TODO: Update scene objects.
         //
@@ -174,18 +152,15 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update()
         // but if you change the StepTimer to use a fixed time step this code will
         // run as many times as needed to get to the current step.
         //
-
-#ifdef DRAW_SAMPLE_CONTENT
-        m_spinningCubeRenderer->Update(m_timer);
-#endif
+		m_terrain->Update(m_timer);
     });
+
+
 
     // We complete the frame update by using information about our content positioning
     // to set the focus point.
 
-    for (auto cameraPose : prediction->CameraPoses)
-    {
-#ifdef DRAW_SAMPLE_CONTENT
+    for (auto cameraPose : prediction->CameraPoses) {
         // The HolographicCameraRenderingParameters class provides access to set
         // the image stabilization parameters.
         HolographicCameraRenderingParameters^ renderingParameters = holographicFrame->GetRenderingParameters(cameraPose);
@@ -198,11 +173,7 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update()
         // since that is the only hologram available for the user to focus on.
         // You can also set the relative velocity and facing of that content; the sample
         // hologram is at a fixed point so we only need to indicate its position.
-        renderingParameters->SetFocusPoint(
-            currentCoordinateSystem,
-            m_spinningCubeRenderer->GetPosition()
-            );
-#endif
+		renderingParameters->SetFocusPoint(currentCoordinateSystem, m_terrain->GetPosition());
     }
 
     // The holographic frame will be used to get up-to-date view and projection matrices and
@@ -213,8 +184,7 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update()
 // Renders the current frame to each holographic camera, according to the
 // current application and spatial positioning state. Returns true if the
 // frame was rendered to at least one camera.
-bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::HolographicFrame^ holographicFrame)
-{
+bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::HolographicFrame^ holographicFrame) {
     // Don't try to render anything before the first Update.
     if (m_timer.GetFrameCount() == 0)
     {
@@ -283,14 +253,13 @@ bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::Holograp
             // Attach the view/projection constant buffer for this camera to the graphics pipeline.
             bool cameraActive = pCameraResources->AttachViewProjectionBuffer(m_deviceResources);
 
-#ifdef DRAW_SAMPLE_CONTENT
+
             // Only render world-locked content when positional tracking is active.
-            if (cameraActive)
-            {
+            if (cameraActive) {
                 // Draw the sample hologram.
-                m_spinningCubeRenderer->Render();
+				m_terrain->Render();
             }
-#endif
+
             atLeastOneCameraRendered = true;
         }
 
@@ -298,8 +267,7 @@ bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::Holograp
     });
 }
 
-void HoloLensTerrainGenDemoMain::SaveAppState()
-{
+void HoloLensTerrainGenDemoMain::SaveAppState() {
     //
     // TODO: Insert code here to save your app state.
     //       This method is called when the app is about to suspend.
@@ -308,8 +276,7 @@ void HoloLensTerrainGenDemoMain::SaveAppState()
     //
 }
 
-void HoloLensTerrainGenDemoMain::LoadAppState()
-{
+void HoloLensTerrainGenDemoMain::LoadAppState() {
     //
     // TODO: Insert code here to load your app state.
     //       This method is called when the app resumes.
@@ -320,24 +287,17 @@ void HoloLensTerrainGenDemoMain::LoadAppState()
 
 // Notifies classes that use Direct3D device resources that the device resources
 // need to be released before this method returns.
-void HoloLensTerrainGenDemoMain::OnDeviceLost()
-{
-#ifdef DRAW_SAMPLE_CONTENT
-    m_spinningCubeRenderer->ReleaseDeviceDependentResources();
-#endif
+void HoloLensTerrainGenDemoMain::OnDeviceLost() {
+	m_terrain->ReleaseDeviceDependentResources();
 }
 
 // Notifies classes that use Direct3D device resources that the device resources
 // may now be recreated.
-void HoloLensTerrainGenDemoMain::OnDeviceRestored()
-{
-#ifdef DRAW_SAMPLE_CONTENT
-    m_spinningCubeRenderer->CreateDeviceDependentResources();
-#endif
+void HoloLensTerrainGenDemoMain::OnDeviceRestored() {
+	m_terrain->CreateDeviceDependentResources();
 }
 
-void HoloLensTerrainGenDemoMain::OnLocatabilityChanged(SpatialLocator^ sender, Object^ args)
-{
+void HoloLensTerrainGenDemoMain::OnLocatabilityChanged(SpatialLocator^ sender, Object^ args) {
     switch (sender->Locatability)
     {
     case SpatialLocatability::Unavailable:
@@ -368,15 +328,10 @@ void HoloLensTerrainGenDemoMain::OnLocatabilityChanged(SpatialLocator^ sender, O
     }
 }
 
-void HoloLensTerrainGenDemoMain::OnCameraAdded(
-    HolographicSpace^ sender,
-    HolographicSpaceCameraAddedEventArgs^ args
-    )
-{
+void HoloLensTerrainGenDemoMain::OnCameraAdded(HolographicSpace^ sender, HolographicSpaceCameraAddedEventArgs^ args) {
     Deferral^ deferral = args->GetDeferral();
     HolographicCamera^ holographicCamera = args->Camera;
-    create_task([this, deferral, holographicCamera] ()
-    {
+    create_task([this, deferral, holographicCamera] () {
         //
         // TODO: Allocate resources for the new camera and load any content specific to
         //       that camera. Note that the render target size (in pixels) is a property
@@ -400,13 +355,8 @@ void HoloLensTerrainGenDemoMain::OnCameraAdded(
     });
 }
 
-void HoloLensTerrainGenDemoMain::OnCameraRemoved(
-    HolographicSpace^ sender,
-    HolographicSpaceCameraRemovedEventArgs^ args
-    )
-{
-    create_task([this]()
-    {
+void HoloLensTerrainGenDemoMain::OnCameraRemoved(HolographicSpace^ sender, HolographicSpaceCameraRemovedEventArgs^ args) {
+    create_task([this]() {
         //
         // TODO: Asynchronously unload or deactivate content resources (not back buffer 
         //       resources) that are specific only to the camera that was removed.
