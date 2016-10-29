@@ -22,10 +22,6 @@ Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, fl
 
 Terrain::~Terrain() {
 	if (m_heightmap) {
-		for (auto i = 0u; i < m_hHeightmap * m_resHeightmap + 1; ++i) {
-			delete[] m_heightmap[i];
-		}
-
 		delete[] m_heightmap;
 	}
 }
@@ -34,14 +30,10 @@ Terrain::~Terrain() {
 void Terrain::InitializeHeightmap() {
 	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
 	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
-	m_heightmap = new float*[h];
+	m_heightmap = new float[h * w];
 
-	for (auto i = 0u; i < h; ++i) {
-		m_heightmap[i] = new float[w];
-
-		for (auto j = 0u; j < w; ++j) {
-			m_heightmap[i][j] = 0.0f;
-		}
+	for (auto i = 0u; i < h * w; ++i) {
+		m_heightmap[i] = i < h * w / 2? 0.1f : 0.0f;
 	}
 }
 
@@ -109,8 +101,8 @@ void Terrain::Render() {
 
 	const auto context = m_deviceResources->GetD3DDeviceContext();
 
-	// Each vertex is one instance of the VertexPositionColor struct.
-	const UINT stride = sizeof(VertexPositionColor);
+	// Each vertex is one instance of the Vertex struct.
+	const UINT stride = sizeof(Vertex);
 	const UINT offset = 0;
 	context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
 	context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
@@ -121,6 +113,8 @@ void Terrain::Render() {
 	context->VSSetShader(m_vertexShader.Get(),	nullptr, 0);
 	// Apply the model constant buffer to the vertex shader.
 	context->VSSetConstantBuffers(0, 1,	m_modelConstantBuffer.GetAddressOf());
+	// attach the heightmap
+	context->VSSetShaderResources(0, 1, m_hmSRV.GetAddressOf());
 
 	if (!m_usingVprtShaders) {
 		// On devices that do not support the D3D11_FEATURE_D3D11_OPTIONS3::
@@ -132,6 +126,8 @@ void Terrain::Render() {
 
 	// Attach the pixel shader.
 	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+	// attach the heightmap
+	context->PSSetShaderResources(0, 1, m_hmSRV.GetAddressOf());
 
 	// Draw the objects.
 	context->DrawIndexedInstanced(m_indexCount,	2, 0, 0, 0);
@@ -164,7 +160,7 @@ void Terrain::CreateDeviceDependentResources() {
 		constexpr std::array<D3D11_INPUT_ELEMENT_DESC, 2> vertexDesc =
 		{ {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			} };
 
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc.data(), vertexDesc.size(), fileData.data(), fileData.size(), &m_inputLayout));
@@ -188,17 +184,17 @@ void Terrain::CreateDeviceDependentResources() {
 
 	// Once all shaders are loaded, create the mesh.
 	task<void> shaderTaskGroup = m_usingVprtShaders ? (createPSTask && createVSTask) : (createPSTask && createVSTask && createGSTask);
-	task<void> createTerrainTask = shaderTaskGroup.then([this]() {
+	task<void> createMeshTask = shaderTaskGroup.then([this]() {
 		// Load mesh vertices. Each vertex has a position and a color.
 		auto h = m_hHeightmap * m_resHeightmap + 1;
 		auto w = m_wHeightmap * m_resHeightmap + 1;
 		float d = 100.0f * m_resHeightmap;
-		std::vector<VertexPositionColor> terrainVertices;
+		std::vector<Vertex> terrainVertices;
 		for (auto i = 0u; i < h; ++i) {
 			float y = (float)i / d;
 			for (auto j = 0u; j < w; ++j) {
 				float x = (float)j / d;
-				terrainVertices.push_back({XMFLOAT3(x, m_heightmap[i][j], y), XMFLOAT3(x, y, 0.0f)});
+				terrainVertices.push_back({XMFLOAT3(x, 0.0f, y), XMFLOAT2((float)j / (float)w, (float)i / (float)h)});
 			}
 		}
 
@@ -206,7 +202,7 @@ void Terrain::CreateDeviceDependentResources() {
 		vertexBufferData.pSysMem = terrainVertices.data();
 		vertexBufferData.SysMemPitch = 0;
 		vertexBufferData.SysMemSlicePitch = 0;
-		const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(VertexPositionColor) * terrainVertices.size(), D3D11_BIND_VERTEX_BUFFER);
+		const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(Vertex) * terrainVertices.size(), D3D11_BIND_VERTEX_BUFFER);
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &m_vertexBuffer));
 
 		// Load mesh indices. Each trio of indices represents
@@ -236,8 +232,36 @@ void Terrain::CreateDeviceDependentResources() {
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &m_indexBuffer));
 	});
 
+	// we need to create a texture and shader resource view for the height map.
+	task<void> createHeightmapTextureTask = createMeshTask.then([this]() {
+		D3D11_TEXTURE2D_DESC descTex = { 0 };
+		descTex.MipLevels = 1;
+		descTex.ArraySize = 1;
+		descTex.Width = m_wHeightmap * m_resHeightmap + 1;
+		descTex.Height = m_hHeightmap * m_resHeightmap + 1;
+		descTex.Format = DXGI_FORMAT_R32_FLOAT;
+		descTex.SampleDesc.Count = 1;
+		descTex.SampleDesc.Quality = 0;
+		descTex.Usage = D3D11_USAGE_DYNAMIC;
+		descTex.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		descTex.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		D3D11_SUBRESOURCE_DATA dataTex = { 0 };
+		dataTex.pSysMem = m_heightmap;
+		dataTex.SysMemPitch = (m_wHeightmap * m_resHeightmap + 1) * sizeof(float);
+		dataTex.SysMemSlicePitch = (m_hHeightmap * m_resHeightmap + 1) * (m_wHeightmap * m_resHeightmap + 1) * sizeof(float);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateTexture2D(&descTex, &dataTex, &m_hmTexture));
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC descSRV = {};
+		descSRV.Texture2D.MipLevels = descTex.MipLevels;
+		descSRV.Texture2D.MostDetailedMip = 0;
+		descSRV.Format = descTex.Format;
+		descSRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateShaderResourceView(m_hmTexture.Get(), &descSRV, &m_hmSRV));
+	});
+
 	// Once the cube is loaded, the object is ready to be rendered.
-	createTerrainTask.then([this]() { m_loadingComplete = true; });
+	createHeightmapTextureTask.then([this]() { m_loadingComplete = true; });
 }
 
 void Terrain::ReleaseDeviceDependentResources() {
@@ -250,5 +274,7 @@ void Terrain::ReleaseDeviceDependentResources() {
 	m_modelConstantBuffer.Reset();
 	m_vertexBuffer.Reset();
 	m_indexBuffer.Reset();
+	m_hmTexture.Reset();
+	m_hmSRV.Reset();
 }
 

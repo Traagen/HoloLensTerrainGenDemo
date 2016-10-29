@@ -30,7 +30,7 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
     m_holographicSpace = holographicSpace;
 
 //	m_spatialInputHandler = std::make_unique<SpatialInputHandler>();
-	m_terrain = std::make_unique<Terrain>(m_deviceResources, 1.0f, 1.0f, 4);
+	m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.5f, 0.5f, 4);
 
     // Use the default SpatialLocator to track the motion of the device.
     m_locator = SpatialLocator::GetDefault();

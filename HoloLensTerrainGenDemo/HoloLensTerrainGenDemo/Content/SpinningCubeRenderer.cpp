@@ -95,8 +95,8 @@ void SpinningCubeRenderer::Render()
 
     const auto context = m_deviceResources->GetD3DDeviceContext();
 
-    // Each vertex is one instance of the VertexPositionColor struct.
-    const UINT stride = sizeof(VertexPositionColor);
+    // Each vertex is one instance of the Vertex struct.
+    const UINT stride = sizeof(Vertex);
     const UINT offset = 0;
     context->IASetVertexBuffers(
         0,
@@ -254,7 +254,7 @@ void SpinningCubeRenderer::CreateDeviceDependentResources()
         // Note that the cube size has changed from the default DirectX app
         // template. Windows Holographic is scaled in meters, so to draw the
         // cube at a comfortable size we made the cube width 0.2 m (20 cm).
-        static const std::array<VertexPositionColor, 8> cubeVertices =
+    /*    static const std::array<Vertex, 8> cubeVertices =
         {{
             { XMFLOAT3(-0.1f, -0.1f, -0.1f), XMFLOAT3(0.0f, 0.0f, 0.0f) },
             { XMFLOAT3(-0.1f, -0.1f,  0.1f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
@@ -264,13 +264,24 @@ void SpinningCubeRenderer::CreateDeviceDependentResources()
             { XMFLOAT3( 0.1f, -0.1f,  0.1f), XMFLOAT3(1.0f, 0.0f, 1.0f) },
             { XMFLOAT3( 0.1f,  0.1f, -0.1f), XMFLOAT3(1.0f, 1.0f, 0.0f) },
             { XMFLOAT3( 0.1f,  0.1f,  0.1f), XMFLOAT3(1.0f, 1.0f, 1.0f) },
-        }};
+        }};*/
+		static const std::array<Vertex, 8> cubeVertices =
+		{ {
+			{ XMFLOAT3(-0.1f, -0.1f, -0.1f), XMFLOAT2(0.0f, 0.0f) },
+			{ XMFLOAT3(-0.1f, -0.1f,  0.1f), XMFLOAT2(0.0f, 0.0f) },
+			{ XMFLOAT3(-0.1f,  0.1f, -0.1f), XMFLOAT2(0.0f, 1.0f) },
+			{ XMFLOAT3(-0.1f,  0.1f,  0.1f), XMFLOAT2(0.0f, 1.0f) },
+			{ XMFLOAT3(0.1f, -0.1f, -0.1f), XMFLOAT2(1.0f, 0.0f) },
+			{ XMFLOAT3(0.1f, -0.1f,  0.1f), XMFLOAT2(1.0f, 0.0f) },
+			{ XMFLOAT3(0.1f,  0.1f, -0.1f), XMFLOAT2(1.0f, 1.0f) },
+			{ XMFLOAT3(0.1f,  0.1f,  0.1f), XMFLOAT2(1.0f, 1.0f) },
+			} };
 
         D3D11_SUBRESOURCE_DATA vertexBufferData = {0};
         vertexBufferData.pSysMem                = cubeVertices.data();
         vertexBufferData.SysMemPitch            = 0;
         vertexBufferData.SysMemSlicePitch       = 0;
-        const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(VertexPositionColor) * cubeVertices.size(), D3D11_BIND_VERTEX_BUFFER);
+        const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(Vertex) * cubeVertices.size(), D3D11_BIND_VERTEX_BUFFER);
         DX::ThrowIfFailed(
             m_deviceResources->GetD3DDevice()->CreateBuffer(
                 &vertexBufferDesc,

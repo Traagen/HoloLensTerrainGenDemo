@@ -10,11 +10,16 @@ cbuffer ViewProjectionConstantBuffer : register(b1)
     float4x4 viewProjection[2];
 };
 
+Texture2D<float> heightmap : register(t0);
+SamplerState hmsampler : register(s0) {
+	Filter = MIN_MAG_MIP_LINEAR;
+};
+
 // Per-vertex data used as input to the vertex shader.
 struct VertexShaderInput
 {
     min16float3 pos     : POSITION;
-    min16float3 color   : COLOR0;
+    min16float2 uv		: TEXCOORD0;
     uint        instId  : SV_InstanceID;
 };
 
@@ -23,7 +28,7 @@ struct VertexShaderInput
 struct VertexShaderOutput
 {
     min16float4 pos     : SV_POSITION;
-    min16float3 color   : COLOR0;
+    min16float2 uv		: TEXCOORD0;
     uint        rtvId   : SV_RenderTargetArrayIndex; // SV_InstanceID % 2
 };
 
@@ -32,6 +37,7 @@ VertexShaderOutput main(VertexShaderInput input)
 {
     VertexShaderOutput output;
     float4 pos = float4(input.pos, 1.0f);
+	pos.y = heightmap.SampleLevel(hmsampler, input.uv, 0);
 
     // Note which view this vertex has been sent to. Used for matrix lookup.
     // Taking the modulo of the instance ID allows geometry instancing to be used
@@ -47,7 +53,7 @@ VertexShaderOutput main(VertexShaderInput input)
     output.pos = (min16float4)pos;
 
     // Pass the color through without modification.
-    output.color = input.color;
+    output.uv = input.uv;
 
     // Set the render target array index.
     output.rtvId = idx;
