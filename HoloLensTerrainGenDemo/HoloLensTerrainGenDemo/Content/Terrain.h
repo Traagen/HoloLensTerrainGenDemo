@@ -3,6 +3,8 @@
 #include "..\Common\DeviceResources.h"
 #include "..\Common\StepTimer.h"
 #include "ShaderStructures.h"
+#include "BSP Tree.h"
+#include <random>
 
 namespace HoloLensTerrainGenDemo {
 	class Terrain {
@@ -26,6 +28,11 @@ namespace HoloLensTerrainGenDemo {
 	private:
 		// initializes the height map to the supplied dimensions.
 		void InitializeHeightmap();
+		void IterateFaultFormation(unsigned int treeDepth, float treeAmplitude);
+		// Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
+		// depth of 1 is a leaf node.
+		void BuildBSPTree(BSPNode* current, unsigned int depth);
+		void FIRFilter(float filter);
 
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources>			    m_deviceResources;
@@ -58,5 +65,6 @@ namespace HoloLensTerrainGenDemo {
 		// holoLens scales by 1 = 1m, so if width of surface is 0.1, that's
 		// 10cm. For resolution 4, we'd have 10*4 + 1 vertices.
 		unsigned int										m_resHeightmap;
+		std::default_random_engine generator;
 	};
-}
+};

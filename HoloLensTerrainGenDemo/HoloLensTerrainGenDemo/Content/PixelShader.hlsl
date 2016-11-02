@@ -20,14 +20,14 @@ float3 estimateNormal(float2 texcoord) {
 	float2 h = texcoord + float2(-0.01f, 0.0f);
 	float2 i = texcoord + float2(-0.01f, -0.01f);
 
-	float zb = heightmap.SampleLevel(hmsampler, b, 0).x;
-	float zc = heightmap.SampleLevel(hmsampler, c, 0).x;
-	float zd = heightmap.SampleLevel(hmsampler, d, 0).x;
-	float ze = heightmap.SampleLevel(hmsampler, e, 0).x;
-	float zf = heightmap.SampleLevel(hmsampler, f, 0).x;
-	float zg = heightmap.SampleLevel(hmsampler, g, 0).x;
-	float zh = heightmap.SampleLevel(hmsampler, h, 0).x;
-	float zi = heightmap.SampleLevel(hmsampler, i, 0).x;
+	float zb = heightmap.SampleLevel(hmsampler, b, 0).x * 50;
+	float zc = heightmap.SampleLevel(hmsampler, c, 0).x * 50;
+	float zd = heightmap.SampleLevel(hmsampler, d, 0).x * 50;
+	float ze = heightmap.SampleLevel(hmsampler, e, 0).x * 50;
+	float zf = heightmap.SampleLevel(hmsampler, f, 0).x * 50;
+	float zg = heightmap.SampleLevel(hmsampler, g, 0).x * 50;
+	float zh = heightmap.SampleLevel(hmsampler, h, 0).x * 50;
+	float zi = heightmap.SampleLevel(hmsampler, i, 0).x * 50;
 
 	float x = zg + 2 * zh + zi - zc - 2 * zd - ze;
 	float y = 2 * zb + zc + zi - ze - 2 * zf - zg;
@@ -39,9 +39,9 @@ float3 estimateNormal(float2 texcoord) {
 // The pixel shader passes through the color data. The color data from 
 // is interpolated and assigned to a pixel at the rasterization step.
 min16float4 main(PixelShaderInput input) : SV_TARGET {
-	float3 color = { 0.0f, 1.0f, 0.0f };
+	float3 color = { 0.23f, 0.72f, 0.13f };
 	float3 norm = estimateNormal(input.uv);
-	float3 light = normalize(float3(1.0f, 1.0f, -1.0f));
+	float3 light = normalize(float3(1.0f, -0.5f, -1.0f));
 	float diff = saturate(dot(norm, -light));
 
 	return min16float4(saturate(color * (diff + 0.1f)), 1.0f);

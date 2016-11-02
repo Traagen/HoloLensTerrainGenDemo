@@ -91,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AppView.h" />
+    <ClInclude Include="Content\BSP Tree.h" />
     <ClInclude Include="Content\Terrain.h" />
     <ClInclude Include="HoloLensTerrainGenDemoMain.h" />
     <ClInclude Include="Common\DeviceResources.h" />
@@ -104,6 +105,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AppView.cpp" />
+    <ClCompile Include="Content\BSP Tree.cpp" />
     <ClCompile Include="Content\Terrain.cpp" />
     <ClCompile Include="HoloLensTerrainGenDemoMain.cpp" />
     <ClCompile Include="Common\DeviceResources.cpp" />

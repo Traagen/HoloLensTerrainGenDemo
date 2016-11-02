@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Terrain.h"
 #include "Common\DirectXHelper.h"
+#include <stdlib.h>
 
 using namespace HoloLensTerrainGenDemo;
 using namespace Concurrency;
@@ -33,8 +34,241 @@ void Terrain::InitializeHeightmap() {
 	m_heightmap = new float[h * w];
 
 	for (auto i = 0u; i < h * w; ++i) {
-		m_heightmap[i] = i < h * w / 2? 0.1f : 0.0f;
+		m_heightmap[i] = 0.0f;
 	}
+
+//	srand(23412342);
+
+	for (int i = 0; i < 100; ++i) {
+		IterateFaultFormation(5, 0.002f);
+	}
+	for (int i = 0; i < 20; ++i) {
+		FIRFilter(0.2f);
+	}
+}
+
+// Basic Fault Formation Algorithm
+// FIR erosion filter
+void Terrain::FIRFilter(float filter) {
+	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
+	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	float prev;
+
+	for (int y = 0; y < h; ++y) {
+		prev = m_heightmap[y * w];
+		for (int x = 1; x < w; ++x) {
+			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
+		}
+
+		prev = m_heightmap[(w - 1) + y * w];
+		for (int x = w - 2; x >= 0; --x) {
+			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
+		}
+	}
+
+	for (int x = 0; x < w; ++x) {
+		prev = m_heightmap[x];
+		for (int y = 1; y < h; ++y) {
+			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
+		}
+
+		prev = m_heightmap[x + w * (h - 1)];
+		for (int y = h - 2; y >= 0; --y) {
+			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
+		}
+	}
+}
+
+void Terrain::IterateFaultFormation(unsigned int treeDepth, float treeAmplitude) {
+	BSPNode root;
+	BuildBSPTree(&root, treeDepth);
+
+	// for each point in the height map, walk the BSP Tree to determine height of the point.
+	for (unsigned int y = 0; y < m_hHeightmap * m_resHeightmap + 1; ++y) {
+		for (unsigned int x = 0; x < m_wHeightmap * m_resHeightmap + 1; ++x) {
+			BSPNode* current = &root;
+			float amp = treeAmplitude;
+			float h = 0;
+
+			for (unsigned int d = 1; d <= treeDepth; ++d) {
+				auto start = current->GetStartPos();
+				auto end = current->GetEndPos();
+				float dx = end.x - start.x;
+				float dy = end.y - start.y;
+				float ddx = x - start.x;
+				float ddy = y - start.y;
+
+				if (ddx * dy - dx * ddy > 0) {
+					current = current->GetRightChild();
+					h += amp;
+				} else {
+					current = current->GetLeftChild();
+					h -= amp;
+				}
+
+				amp /= 2.0f;
+			}
+
+			m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] += h;
+		}
+	}
+}
+
+// Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
+// depth of 1 is a leaf node.
+/*void Terrain::BuildBSPTree(BSPNode* current, unsigned int depth) {
+	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
+	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	std::uniform_int_distribution<int> distX(0, w);
+	std::uniform_int_distribution<int> distY(0, h);
+	
+	current->SetStartPos(distX(generator), distY(generator));
+	current->SetEndPos(distX(generator), distY(generator));
+	//current->SetStartPos(rand() % w, rand() % h);
+	//current->SetEndPos(rand() % w, rand() % h);
+
+	if (depth <= 1) return;
+
+	BuildBSPTree(current->CreateLeftChild(), depth - 1);
+	BuildBSPTree(current->CreateRightChild(), depth - 1);
+}*/
+
+// Perform intersection test between two line segments
+// take in 4 points. Make p1 and p2 the current line segment. Make p3 and p4 the one to intersect against.
+// Return A: The point of intersection. Pass by reference.
+// return j: j = ua. How far along the current line the intersection happens. Pass by reference.
+// return k: k = ub. How far along the intersecting line the intersection happens. Pass by reference.
+// return boolean value. True if intersection happens, false if it doesn't.
+bool Intersect(float px1, float py1, float px2, float py2, float px3, float py3, float px4, float py4, 
+	float &ax, float &ay, float &j, float &k) {
+	float denom = (py4 - py3) * (px2 - px1) - (px4 - px3) * (py2 - py1);
+
+	if (denom == 0) { // then the two lines are parallel and will never intersect.
+		ax = ay = j = k = 0;
+		return false;
+	}
+
+	float ua = ((px4 - px3) * (py1 - py3) - (py4 - py3) * (px1 - px3)) / denom;
+	float ub = ((px2 - px1) * (py1 - py3) - (py2 - py1) * (px1 - px3)) / denom;
+	j = ua;
+	k = ub;
+
+	ax = px1 + ua * (px2 - px1);
+	ay = py1 + ua * (py2 - py1);
+
+	return true;
+}
+
+void Terrain::BuildBSPTree(BSPNode *current, unsigned int depth) {
+	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
+	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	std::uniform_int_distribution<int> distX(0, w);
+	std::uniform_int_distribution<int> distY(0, h);
+	std::uniform_real_distribution<float> distL(0.0f, 1.0f);
+	std::uniform_real_distribution<float> distT(-45.0f, 45.0f);
+
+	BSPNode* parent = current->GetParent();
+	if (parent) {
+		auto start = parent->GetStartPos();
+		auto end = parent->GetEndPos();
+		float m = (end.y - start.y) / (end.x - start.x); // find the slope of the parent line.
+		float b = start.y - m * start.x; // find b for the equation y = mx + b by solving for b using the start point b = y - mx.
+		float dx = end.x - start.x;
+		float qdx = dx / 4;
+		float hdx = dx / 2;
+
+		// find random start point along parent line, somewhere between 0.25 and 0.75 along the segment.
+		float x = start.x + qdx + distL(generator) * hdx;
+		float y = m * x + b;
+		current->SetStartPos(x, y);
+
+		// find random direction off of point and look for end point. Line will either intersect with the border of the terrain, or it will intersect with an ancestor.
+		// we want the random direction off of our child's start point to be somewhere between 45 and 135 degrees from the parent line.
+		// we can find the perpendicular left vector as our direction (e - s) expressed as (x, y) inverted to (-y, x)
+		// we can find the perpendicular right vector as our direction (e - s) expressed as (x, y) inverted to (y, -x)
+		float lx, ly;
+		// figure out if this is the left or right child.
+		if (current == parent->GetLeftChild()) {
+			lx = -1 * (end.y - start.y);
+			ly = end.x - start.x;
+		}
+		else {
+			lx = end.y - start.y;
+			ly = -1 * (end.x - start.x);
+		}
+
+		// Now randomly choose a value between -45 degrees and 45 degrees (expressed in radians).
+		float theta = DirectX::XMConvertToRadians(distT(generator));
+		// Now rotate our perpendicular direction vector by theta
+		float llx = lx * cos(theta) - ly * sin(theta);
+		float lly = lx * sin(theta) + ly * cos(theta);
+
+		// Now find the end point by intersecting first with the borders of the map and then with ancestors.
+		float x2 = x + llx;
+		float y2 = y + lly;
+		// first the bottom border (0,0) to (MAPSIZE - 1, 0). Since this is the first, if it intersects at all with ua > 0, A will become
+		// our new end point to test against.
+		float x3 = 0;
+		float y3 = 0;
+		float x4 = w - 1;
+		float y4 = 0;
+		float ua, ub, ax, ay;
+		bool in = Intersect(x, y, x2, y2, x3, y3, x4, y4, ax, ay, ua, ub);
+		if (in && (ua > 0)) { // we don't want to use it if in is false
+			x2 = ax;
+			y2 = ay;
+		}
+		// test against right border (MAPSIZE - 1, 0) to (MAPSIZE - 1, MAPSIZE - 1). Be more picky. 0 < ua < 1 and 0 < ub < 1.
+		x3 = x4;
+		y3 = y4;
+		y4 = w - 1;
+		in = Intersect(x, y, x2, y2, x3, y3, x4, y4, ax, ay, ua, ub);
+		if (in && (ua > 0) && (ua < 1) && (ub > 0) && (ub < 1)) {
+			x2 = ax;
+			y2 = ay;
+		}
+		// test against top border (MAPSIZE - 1, MAPSIZE - 1) to (0, MAPSIZE - 1).
+		y3 = y4;
+		x4 = 0;
+		in = Intersect(x, y, x2, y2, x3, y3, x4, y4, ax, ay, ua, ub);
+		if (in && (ua > 0) && (ua < 1) && (ub > 0) && (ub < 1)) {
+			x2 = ax;
+			y2 = ay;
+		}
+		// test against left border (0, MAPSIZE - 1) to (0, 0)
+		x3 = x4;
+		y4 = 0;
+		in = Intersect(x, y, x2, y2, x3, y3, x4, y4, ax, ay, ua, ub);
+		if (in && (ua > 0) && (ua < 1) && (ub > 0) && (ub < 1)) {
+			x2 = ax;
+			y2 = ay;
+		}
+		// now that we know where the line segment intersects the border of the map, we need to see if it intersects an ancestor before that happens.
+		// It cannot intersect its immediate parent anywhere but at the start point which we already have so ignore the parent and move on to the
+		// grandparent.
+		parent = parent->GetParent();
+		while (parent) { // This will kick out once the ancestor is NULL
+			auto p3 = parent->GetStartPos();
+			auto p4 = parent->GetEndPos();
+			in = Intersect(x, y, x2, y2, p3.x, p3.y, p4.x, p4.y, ax, ay, ua, ub);
+			if (in && (ua > 0) && (ua < 1) && (ub > 0) && (ub < 1)) {
+				x2 = ax;
+				y2 = ay;
+			}
+
+			parent = parent->GetParent();
+		}
+		current->SetEndPos(x2, y2);
+	} else {
+		// if this is the root node, we just randomly set the initial divider.
+		current->SetStartPos(distX(generator), distY(generator));
+		current->SetEndPos(distX(generator), distY(generator));
+	}
+
+	if (depth <= 1) return;
+	
+	BuildBSPTree(current->CreateLeftChild(), depth - 1);
+	BuildBSPTree(current->CreateRightChild(), depth - 1);
 }
 
 // This function uses a SpatialPointerPose to position the world-locked hologram

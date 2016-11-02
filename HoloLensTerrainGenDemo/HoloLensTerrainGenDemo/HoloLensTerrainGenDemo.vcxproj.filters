@@ -67,6 +67,9 @@
     <ClCompile Include="Content\Terrain.cpp">
       <Filter>Content</Filter>
     </ClCompile>
+    <ClCompile Include="Content\BSP Tree.cpp">
+      <Filter>Content</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -82,6 +85,9 @@
     </ClInclude>
     <ClInclude Include="HoloLensTerrainGenDemoMain.h" />
     <ClInclude Include="Content\Terrain.h">
+      <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="Content\BSP Tree.h">
       <Filter>Content</Filter>
     </ClInclude>
   </ItemGroup>
