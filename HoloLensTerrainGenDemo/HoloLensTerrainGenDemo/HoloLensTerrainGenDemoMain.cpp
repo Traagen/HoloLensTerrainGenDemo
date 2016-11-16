@@ -29,7 +29,7 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
 
     m_holographicSpace = holographicSpace;
 
-//	m_spatialInputHandler = std::make_unique<SpatialInputHandler>();
+	m_spatialInputHandler = std::make_unique<SpatialInputHandler>();
 	m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.5f, 0.5f, 4);
 
     // Use the default SpatialLocator to track the motion of the device.
@@ -136,13 +136,14 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
     SpatialCoordinateSystem^ currentCoordinateSystem = m_referenceFrame->CoordinateSystem;
 
     // Check for new input state since the last frame.
-/*    SpatialInteractionSourceState^ pointerState = m_spatialInputHandler->CheckForInput();
+    SpatialInteractionSourceState^ pointerState = m_spatialInputHandler->CheckForInput();
     if (pointerState != nullptr) {
         // When a Pressed gesture is detected, the sample hologram will be repositioned
         // two meters in front of the user.
 		// Once we've figured out how to attach the terrain to a surface, we won't want to do this.
   //      m_terrain->PositionHologram(pointerState->TryGetPointerPose(currentCoordinateSystem));
-    }*/
+		m_terrain->ResetHeightMap();
+    }
 	
     m_timer.Tick([&] () {
         //

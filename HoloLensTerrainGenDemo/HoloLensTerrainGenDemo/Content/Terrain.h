@@ -25,6 +25,9 @@ namespace HoloLensTerrainGenDemo {
 		void SetPosition(Windows::Foundation::Numerics::float3 pos) { m_position = pos; }
 		Windows::Foundation::Numerics::float3 GetPosition() { return m_position; }
 
+		// Reset the Height map to all zeros.
+		void ResetHeightMap();
+
 	private:
 		// initializes the height map to the supplied dimensions.
 		void InitializeHeightmap();
@@ -66,5 +69,7 @@ namespace HoloLensTerrainGenDemo {
 		// 10cm. For resolution 4, we'd have 10*4 + 1 vertices.
 		unsigned int										m_resHeightmap;
 		std::default_random_engine generator;
+		// iterator for tracking iteration of terrain generator.
+		unsigned int										m_iIter = 0;
 	};
 };

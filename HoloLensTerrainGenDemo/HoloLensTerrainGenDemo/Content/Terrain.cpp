@@ -39,12 +39,23 @@ void Terrain::InitializeHeightmap() {
 
 //	srand(23412342);
 
-	for (int i = 0; i < 100; ++i) {
+/*	for (int i = 0; i < 100; ++i) {
 		IterateFaultFormation(5, 0.002f);
 	}
 	for (int i = 0; i < 20; ++i) {
 		FIRFilter(0.2f);
+	}*/
+}
+
+void Terrain::ResetHeightMap() {
+	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
+	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+
+	for (auto i = 0u; i < h * w; ++i) {
+		m_heightmap[i] = 0.0f;
 	}
+
+	m_iIter = 0;
 }
 
 // Basic Fault Formation Algorithm
@@ -320,6 +331,26 @@ void Terrain::Update(const DX::StepTimer& timer) {
 		0,
 		0
 	);
+
+	// Update the terrain generator.
+	if (m_iIter < 200) {
+		IterateFaultFormation(5, 0.002f);
+		FIRFilter(0.1f);
+
+		D3D11_MAPPED_SUBRESOURCE mappedTex = { 0 };
+		DX::ThrowIfFailed(context->Map(m_hmTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedTex));
+		unsigned int rowSpan = (m_wHeightmap * m_resHeightmap + 1) * sizeof(float);
+		BYTE* mappedData = reinterpret_cast<BYTE*>(mappedTex.pData);
+		BYTE* buffer = reinterpret_cast<BYTE*>(m_heightmap);
+		for (unsigned int i = 0; i < (m_hHeightmap * m_resHeightmap + 1); ++i) {
+			memcpy(mappedData, buffer, rowSpan);
+			mappedData += mappedTex.RowPitch;
+			buffer += rowSpan;
+		}
+
+		context->Unmap(m_hmTexture.Get(), 0);
+	} 
+	m_iIter = m_iIter < 200 ? m_iIter + 1 : m_iIter;
 }
 
 // Renders one frame using the vertex and pixel shaders.

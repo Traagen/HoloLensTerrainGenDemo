@@ -2,7 +2,7 @@
 
 #include "Common\DeviceResources.h"
 #include "Common\StepTimer.h"
-//#include "Content\SpatialInputHandler.h"
+#include "Content\SpatialInputHandler.h"
 #include "Content\Terrain.h"
 
 // Updates, renders, and presents holographic content using Direct3D.
@@ -52,7 +52,7 @@ namespace HoloLensTerrainGenDemo {
         void UnregisterHolographicEventHandlers();
 
         // Listens for the Pressed spatial input event.
-   //     std::shared_ptr<SpatialInputHandler>                            m_spatialInputHandler;
+        std::shared_ptr<SpatialInputHandler>                            m_spatialInputHandler;
 		// Our terrain
 		std::unique_ptr<Terrain>				                        m_terrain;
         // Cached pointer to device resources.
