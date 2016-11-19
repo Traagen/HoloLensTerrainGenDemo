@@ -36,6 +36,11 @@ namespace HoloLensTerrainGenDemo {
 		// depth of 1 is a leaf node.
 		void BuildBSPTree(BSPNode* current, unsigned int depth);
 		void FIRFilter(float filter);
+		// Calculates a distance value for point p from the edge of the height map.
+		// Calculation is calculated as Dx * Dy
+		// Dx = 1 - (|w/2 - px| / (w/2))
+		// Dy = 1 - (|h/2 - py| / (h/2))
+		float CalcManhattanDistFromCenter(Windows::Foundation::Numerics::float2 p);
 
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources>			    m_deviceResources;

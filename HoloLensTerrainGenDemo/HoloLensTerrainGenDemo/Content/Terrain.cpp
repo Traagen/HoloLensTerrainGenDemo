@@ -65,26 +65,26 @@ void Terrain::FIRFilter(float filter) {
 	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
 	float prev;
 
-	for (int y = 0; y < h; ++y) {
+	for (int y = 1; y < h - 1; ++y) {
 		prev = m_heightmap[y * w];
-		for (int x = 1; x < w; ++x) {
+		for (int x = 1; x < w - 1; ++x) {
 			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
 		}
 
 		prev = m_heightmap[(w - 1) + y * w];
-		for (int x = w - 2; x >= 0; --x) {
+		for (int x = w - 2; x >= 1; --x) {
 			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
 		}
 	}
 
-	for (int x = 0; x < w; ++x) {
+	for (int x = 1; x < w - 1; ++x) {
 		prev = m_heightmap[x];
-		for (int y = 1; y < h; ++y) {
+		for (int y = 1; y < h - 1; ++y) {
 			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
 		}
 
 		prev = m_heightmap[x + w * (h - 1)];
-		for (int y = h - 2; y >= 0; --y) {
+		for (int y = h - 2; y >= 1; --y) {
 			prev = m_heightmap[x + y * w] = filter * prev + (1 - filter) * m_heightmap[x + y * w];
 		}
 	}
@@ -95,8 +95,9 @@ void Terrain::IterateFaultFormation(unsigned int treeDepth, float treeAmplitude)
 	BuildBSPTree(&root, treeDepth);
 
 	// for each point in the height map, walk the BSP Tree to determine height of the point.
-	for (unsigned int y = 0; y < m_hHeightmap * m_resHeightmap + 1; ++y) {
-		for (unsigned int x = 0; x < m_wHeightmap * m_resHeightmap + 1; ++x) {
+	// Don't run on the edges
+	for (unsigned int y = 1; y < m_hHeightmap * m_resHeightmap; ++y) {
+		for (unsigned int x = 1; x < m_wHeightmap * m_resHeightmap; ++x) {
 			BSPNode* current = &root;
 			float amp = treeAmplitude;
 			float h = 0;
@@ -120,9 +121,30 @@ void Terrain::IterateFaultFormation(unsigned int treeDepth, float treeAmplitude)
 				amp /= 2.0f;
 			}
 
-			m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] += h;
+			// Use F to attenuate the amplitude of the fault by the distance from the edge.
+			// F = 0 on the edge. F = 1 in the exact center of the height map.
+			float F = CalcManhattanDistFromCenter({ (float)x, (float)y });
+			m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] += h * F;
+			// ensure that the height value never drops below zero since that
+			// would put it beneath a surface in the real world.
+			if (m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] < 0) m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] = 0;
 		}
 	}
+}
+
+// Calculates a distance value for point p from the edge of the height map.
+// Calculation is calculated as Dx * Dy
+// Dx = 1 - (|w/2 - px| / (w/2))
+// Dy = 1 - (|h/2 - py| / (h/2))
+float Terrain::CalcManhattanDistFromCenter(Windows::Foundation::Numerics::float2 p) {
+	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
+	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	float h2 = (float)h / 2.0f;
+	float w2 = (float)w / 2.0f;
+	float Dx = 1 - (abs(w2 - p.x) / w2);
+	float Dy = 1 - (abs(h2 - p.y) / h2);
+
+	return min(Dx * Dy * 4.0f, 1.0f);
 }
 
 // Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
@@ -333,12 +355,14 @@ void Terrain::Update(const DX::StepTimer& timer) {
 	);
 
 	// Update the terrain generator.
-	if (m_iIter < 200) {
+	if (m_iIter < 500) {
 		IterateFaultFormation(5, 0.002f);
 		FIRFilter(0.1f);
 
 		D3D11_MAPPED_SUBRESOURCE mappedTex = { 0 };
 		DX::ThrowIfFailed(context->Map(m_hmTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedTex));
+		// Texture data on GPU may have padding added to each row so we need to
+		// take that padding into account when we upload the data.
 		unsigned int rowSpan = (m_wHeightmap * m_resHeightmap + 1) * sizeof(float);
 		BYTE* mappedData = reinterpret_cast<BYTE*>(mappedTex.pData);
 		BYTE* buffer = reinterpret_cast<BYTE*>(m_heightmap);
@@ -350,7 +374,7 @@ void Terrain::Update(const DX::StepTimer& timer) {
 
 		context->Unmap(m_hmTexture.Get(), 0);
 	} 
-	m_iIter = m_iIter < 200 ? m_iIter + 1 : m_iIter;
+	m_iIter = m_iIter < 500 ? m_iIter + 1 : m_iIter;
 }
 
 // Renders one frame using the vertex and pixel shaders.
