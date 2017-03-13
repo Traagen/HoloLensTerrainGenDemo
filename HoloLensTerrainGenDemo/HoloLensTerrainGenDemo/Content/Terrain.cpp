@@ -15,7 +15,7 @@ Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, fl
 	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res) {
 	m_heightmap = nullptr;
 	InitializeHeightmap();
-
+	
 	SetPosition(float3(-w / 2.0f, -0.2f, h * -2.0f));
 
 	CreateDeviceDependentResources();
@@ -327,6 +327,11 @@ void Terrain::PositionHologram(SpatialPointerPose^ pointerPose) {
 // Called once per frame. Calculates and sets the model matrix
 // relative to the position transform indicated by hologramPositionTransform.
 void Terrain::Update(const DX::StepTimer& timer) {
+	// Loading is asynchronous. Resources must be created before drawing can occur.
+	if (!m_loadingComplete) {
+		return;
+	}
+
 	// Position the terrain.
 	const XMMATRIX modelTranslation = XMMatrixTranslationFromVector(XMLoadFloat3(&m_position));
 

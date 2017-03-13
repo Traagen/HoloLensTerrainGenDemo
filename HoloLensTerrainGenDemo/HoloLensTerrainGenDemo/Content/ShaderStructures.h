@@ -17,4 +17,12 @@ namespace HoloLensTerrainGenDemo
         DirectX::XMFLOAT3 pos;
         DirectX::XMFLOAT2 uv;
     };
+
+	// Constant buffer used to send hologram position and normal transforms to the shader pipeline.
+	struct ModelNormalConstantBuffer
+	{
+		DirectX::XMFLOAT4X4 modelToWorld;
+		DirectX::XMFLOAT4X4 normalToWorld;
+		DirectX::XMFLOAT4   colorFadeFactor;
+	};
 }

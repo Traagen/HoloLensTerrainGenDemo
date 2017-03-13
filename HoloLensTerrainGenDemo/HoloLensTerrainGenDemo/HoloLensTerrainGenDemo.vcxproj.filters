@@ -53,6 +53,9 @@
     <Image Include="Assets\Wide310x150Logo.scale-200.png">
       <Filter>Assets</Filter>
     </Image>
+    <Filter Include="Common\PlaneFinding">
+      <UniqueIdentifier>{01b5d874-8294-408a-b078-d928efb3a346}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -68,6 +71,27 @@
       <Filter>Content</Filter>
     </ClCompile>
     <ClCompile Include="Content\BSP Tree.cpp">
+      <Filter>Content</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\PlaneFinding\FindPlanes.cpp">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\PlaneFinding\HalfEdgeMesh.cpp">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\PlaneFinding\MergePlanes.cpp">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\PlaneFinding\PCAHelper.cpp">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\PlaneFinding\Util.cpp">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClCompile>
+    <ClCompile Include="Content\SurfaceMesh.cpp">
+      <Filter>Content</Filter>
+    </ClCompile>
+    <ClCompile Include="Content\RealtimeSurfaceMeshRenderer.cpp">
       <Filter>Content</Filter>
     </ClCompile>
   </ItemGroup>
@@ -90,6 +114,37 @@
     <ClInclude Include="Content\BSP Tree.h">
       <Filter>Content</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Common\PlaneFinding\common.h">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\PlaneFinding\HalfEdgeMesh.h">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\PlaneFinding\MathHelpers.h">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\PlaneFinding\NBest.h">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\PlaneFinding\PCAHelper.h">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\PlaneFinding\PlaneFinding.h">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\PlaneFinding\Util.h">
+      <Filter>Common\PlaneFinding</Filter>
+    </ClInclude>
+    <ClInclude Include="Content\SurfaceMesh.h">
+      <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="Content\RealtimeSurfaceMeshRenderer.h">
+      <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="GetDataFromIBuffer.h">
+      <Filter>Content</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\VertexShader.hlsl">
@@ -104,11 +159,29 @@
     <FxCompile Include="Content\VPRTVertexShader.hlsl">
       <Filter>Content\Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Content\SimpleLightingPixelShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\SolidColorPixelShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\SurfaceGeometryShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\SurfaceVertexShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\SurfaceVPRTVertexShader.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
   <ItemGroup>
     <None Include="HoloLensTerrainGenDemo_TemporaryKey.pfx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="HoloLensTerrainGenDemo.rc" />
   </ItemGroup>
 </Project>

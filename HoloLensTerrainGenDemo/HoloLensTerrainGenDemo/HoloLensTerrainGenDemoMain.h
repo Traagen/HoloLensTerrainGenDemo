@@ -4,6 +4,7 @@
 #include "Common\StepTimer.h"
 #include "Content\SpatialInputHandler.h"
 #include "Content\Terrain.h"
+#include "Content\RealtimeSurfaceMeshRenderer.h"
 
 // Updates, renders, and presents holographic content using Direct3D.
 namespace HoloLensTerrainGenDemo {
@@ -30,6 +31,9 @@ namespace HoloLensTerrainGenDemo {
         virtual void OnDeviceLost();
         virtual void OnDeviceRestored();
 
+		// Handle surface change events.
+		void OnSurfacesChanged(Windows::Perception::Spatial::Surfaces::SpatialSurfaceObserver^ sender, Platform::Object^ args);
+
     private:
         // Asynchronously creates resources for new holographic cameras.
         void OnCameraAdded(
@@ -47,27 +51,52 @@ namespace HoloLensTerrainGenDemo {
             Windows::Perception::Spatial::SpatialLocator^ sender,
             Platform::Object^ args);
 
+		// Used to prevent the device from deactivating positional tracking, which is 
+		// necessary to continue to receive spatial mapping data.
+		void OnPositionalTrackingDeactivating(
+			Windows::Perception::Spatial::SpatialLocator^ sender,
+			Windows::Perception::Spatial::SpatialLocatorPositionalTrackingDeactivatingEventArgs^ args);
+
         // Clears event registration state. Used when changing to a new HolographicSpace
         // and when tearing down AppMain.
         void UnregisterHolographicEventHandlers();
 
         // Listens for the Pressed spatial input event.
-        std::shared_ptr<SpatialInputHandler>                            m_spatialInputHandler;
+        std::shared_ptr<SpatialInputHandler>								m_spatialInputHandler;
+		
 		// Our terrain
-		std::unique_ptr<Terrain>				                        m_terrain;
-        // Cached pointer to device resources.
-        std::shared_ptr<DX::DeviceResources>                            m_deviceResources;
-        // Render loop timer.
-        DX::StepTimer                                                   m_timer;
-        // Represents the holographic space around the user.
-        Windows::Graphics::Holographic::HolographicSpace^               m_holographicSpace;
-        // SpatialLocator that is attached to the primary camera.
-        Windows::Perception::Spatial::SpatialLocator^                   m_locator;
-        // A reference frame attached to the holographic camera.
-        Windows::Perception::Spatial::SpatialStationaryFrameOfReference^ m_referenceFrame;
-        // Event registration tokens.
-        Windows::Foundation::EventRegistrationToken                     m_cameraAddedToken;
-        Windows::Foundation::EventRegistrationToken                     m_cameraRemovedToken;
-        Windows::Foundation::EventRegistrationToken                     m_locatabilityChangedToken;
+		std::unique_ptr<Terrain>											m_terrain;
+        
+		// Cached pointer to device resources.
+        std::shared_ptr<DX::DeviceResources>								m_deviceResources;
+        
+		// Render loop timer.
+        DX::StepTimer													    m_timer;
+        
+		// Represents the holographic space around the user.
+        Windows::Graphics::Holographic::HolographicSpace^			        m_holographicSpace;
+        
+		// SpatialLocator that is attached to the primary camera.
+        Windows::Perception::Spatial::SpatialLocator^						m_locator;
+        
+		// A reference frame attached to the holographic camera.
+       // Windows::Perception::Spatial::SpatialStationaryFrameOfReference^	m_referenceFrame;
+		Windows::Perception::Spatial::SpatialLocatorAttachedFrameOfReference^ m_referenceFrame;
+
+		// Event registration tokens.
+        Windows::Foundation::EventRegistrationToken							m_cameraAddedToken;
+        Windows::Foundation::EventRegistrationToken							m_cameraRemovedToken;
+  //      Windows::Foundation::EventRegistrationToken							m_locatabilityChangedToken;
+		Windows::Foundation::EventRegistrationToken                         m_positionalTrackingDeactivatingToken;
+		Windows::Foundation::EventRegistrationToken                         m_surfacesChangedToken;
+
+		// Obtains surface mapping data from the device in real time.
+		Windows::Perception::Spatial::Surfaces::SpatialSurfaceObserver^     m_surfaceObserver;
+		bool																m_surfaceAccessAllowed = false;
+		bool																m_spatialPerceptionAccessRequested = false;
+		Windows::Perception::Spatial::Surfaces::SpatialSurfaceMeshOptions^	m_surfaceMeshOptions;
+
+		// A data handler for surface meshes.
+		std::unique_ptr<RealtimeSurfaceMeshRenderer> m_meshRenderer;
     };
 }

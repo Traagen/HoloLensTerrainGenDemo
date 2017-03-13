@@ -1,5 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap mp">
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap2="http://schemas.microsoft.com/appx/manifest/uap/windows10/2"
+         IgnorableNamespaces="uap uap2 mp">
   <Identity Name="66a78e64-b0b4-4e0c-ba7b-7ca606d17c0e" Publisher="CN=Traagen" Version="0.0.1.0" />
   <mp:PhoneIdentity PhoneProductId="66a78e64-b0b4-4e0c-ba7b-7ca606d17c0e" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
@@ -22,4 +26,7 @@
       </uap:VisualElements>
     </Application>
   </Applications>
+  <Capabilities>
+    <uap2:Capability Name="spatialPerception" />
+  </Capabilities>
 </Package>

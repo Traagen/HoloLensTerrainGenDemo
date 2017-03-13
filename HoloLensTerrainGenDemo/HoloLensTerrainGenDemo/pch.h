@@ -10,4 +10,3 @@
 #include <mutex>
 #include <wincodec.h>
 #include <WindowsNumerics.h>
-
