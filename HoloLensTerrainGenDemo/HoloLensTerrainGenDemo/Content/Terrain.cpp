@@ -11,8 +11,8 @@ using namespace Windows::UI::Input::Spatial;
 
 // provide h and w in centimeters.
 // res is number of triangle edges per centimeter.
-Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res) :
-	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res) {
+Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, Windows::Perception::Spatial::SpatialAnchor^ anchor) :
+	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), m_anchor(anchor) {
 	m_heightmap = nullptr;
 	InitializeHeightmap();
 	
@@ -307,39 +307,49 @@ void Terrain::BuildBSPTree(BSPNode *current, unsigned int depth) {
 // This function uses a SpatialPointerPose to position the world-locked hologram
 // two meters in front of the user's heading.
 void Terrain::PositionHologram(SpatialPointerPose^ pointerPose) {
-/*	if (pointerPose != nullptr)	{
+	if (pointerPose != nullptr)	{
 		// Get the gaze direction relative to the given coordinate system.
 		const float3 headPosition = pointerPose->Head->Position;
 		const float3 headDirection = pointerPose->Head->ForwardDirection;
 
 		// The hologram is positioned two meters along the user's gaze direction.
-		constexpr float distanceFromUser = 0.1f; // meters
+		constexpr float distanceFromUser = 2.0f; // meters
 		const float3 gazeAtTwoMeters = headPosition + (distanceFromUser * headDirection);
 
 		// This will be used as the translation component of the hologram's
 		// model transform.
 		SetPosition(gazeAtTwoMeters);
-	}*/
-
-	SetPosition(float3(0.0f, 0.0f, 0.0f));
+	}
 }
 
 // Called once per frame. Calculates and sets the model matrix
 // relative to the position transform indicated by hologramPositionTransform.
-void Terrain::Update(const DX::StepTimer& timer) {
+void Terrain::Update(const DX::StepTimer& timer, Windows::Perception::Spatial::SpatialCoordinateSystem^ coordinateSystem) {
 	// Loading is asynchronous. Resources must be created before drawing can occur.
 	if (!m_loadingComplete) {
 		return;
 	}
 
 	// Position the terrain.
+	// Transform to the correct coordinate system from our anchor's coordinate system.
+	auto tryTransform = m_anchor->CoordinateSystem->TryGetTransformTo(coordinateSystem);
+	XMMATRIX transform;
+	if (tryTransform) {
+		// If the transform can be acquired, this spatial mesh is valid right now and
+		// we have the information we need to draw it this frame.
+		transform = XMLoadFloat4x4(&tryTransform->Value);
+	} else {
+		// just use the identity matrix if we can't load the transform for some reason.
+		transform = XMMatrixIdentity();
+	}
+	// Get the translation matrix.
 	const XMMATRIX modelTranslation = XMMatrixTranslationFromVector(XMLoadFloat3(&m_position));
 
 	// The view and projection matrices are provided by the system; they are associated
 	// with holographic cameras, and updated on a per-camera basis.
 	// Here, we provide the model transform for the sample hologram. The model transform
 	// matrix is transposed to prepare it for the shader.
-	XMStoreFloat4x4(&m_modelConstantBufferData.model, XMMatrixTranspose(modelTranslation));
+	XMStoreFloat4x4(&m_modelConstantBufferData.modelToWorld, XMMatrixTranspose(modelTranslation * transform));
 
 	// Loading is asynchronous. Resources must be created before they can be updated.
 	if (!m_loadingComplete)	{

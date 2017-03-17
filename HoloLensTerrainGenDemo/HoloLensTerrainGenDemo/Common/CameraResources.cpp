@@ -10,6 +10,7 @@ using namespace Microsoft::WRL;
 using namespace Windows::Graphics::DirectX::Direct3D11;
 using namespace Windows::Graphics::Holographic;
 using namespace Windows::Perception::Spatial;
+using namespace HoloLensTerrainGenDemo;
 
 DX::CameraResources::CameraResources(HolographicCamera^ camera) :
     m_holographicCamera(camera),
@@ -184,7 +185,7 @@ void DX::CameraResources::UpdateViewProjectionBuffer(
     // This usually means that positional tracking is not active for the current frame, in
     // which case it is possible to use a SpatialLocatorAttachedFrameOfReference to render
     // content that is not world-locked instead.
-    DX::ViewProjectionConstantBuffer viewProjectionConstantBufferData;
+    ViewProjectionConstantBuffer viewProjectionConstantBufferData;
     bool viewTransformAcquired = viewTransformContainer != nullptr;
     if (viewTransformAcquired)
     {

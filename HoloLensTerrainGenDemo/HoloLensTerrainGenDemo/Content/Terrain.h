@@ -11,11 +11,11 @@ namespace HoloLensTerrainGenDemo {
 	public:
 		// provide h and w in centimeters.
 		// res is number of triangle edges per centimeter.
-		Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res);
+		Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, Windows::Perception::Spatial::SpatialAnchor^ anchor);
 		~Terrain();
 		void CreateDeviceDependentResources();
 		void ReleaseDeviceDependentResources();
-		void Update(const DX::StepTimer& timer);
+		void Update(const DX::StepTimer& timer, Windows::Perception::Spatial::SpatialCoordinateSystem^ coordinateSystem);
 		void Render();
 
 		// Repositions the sample hologram.
@@ -76,5 +76,7 @@ namespace HoloLensTerrainGenDemo {
 		std::default_random_engine generator;
 		// iterator for tracking iteration of terrain generator.
 		unsigned int										m_iIter = 0;
+		// spatial anchor
+		Windows::Perception::Spatial::SpatialAnchor^		m_anchor;
 	};
 };

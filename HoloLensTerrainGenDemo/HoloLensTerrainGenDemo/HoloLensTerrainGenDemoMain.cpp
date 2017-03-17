@@ -31,6 +31,10 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
 
 	m_holographicSpace = holographicSpace;
 
+	m_terrain = nullptr;
+	m_surfaceObserver = nullptr;
+	m_meshRenderer = std::make_unique<RealtimeSurfaceMeshRenderer>(m_deviceResources);
+
 	m_spatialInputHandler = std::make_unique<SpatialInputHandler>();
 
 	// Use the default SpatialLocator to track the motion of the device.
@@ -70,25 +74,17 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
 			std::bind(&HoloLensTerrainGenDemoMain::OnCameraRemoved, this, _1, _2)
 			);
 
+	m_locatabilityChangedToken =
+		m_locator->LocatabilityChanged +=
+		ref new Windows::Foundation::TypedEventHandler<SpatialLocator^, Object^>(
+			std::bind(&HoloLensTerrainGenDemoMain::OnLocatabilityChanged, this, _1, _2)
+			);
+
 	// The simplest way to render world-locked holograms is to create a stationary reference frame
 	// when the app is launched. This is roughly analogous to creating a "world" coordinate system
 	// with the origin placed at the device's position as the app is launched.
-	//m_referenceFrame = m_locator->CreateStationaryFrameOfReferenceAtCurrentLocation();
+	//m_referenceFrame2 = m_locator->CreateStationaryFrameOfReferenceAtCurrentLocation();
 	m_referenceFrame = m_locator->CreateAttachedFrameOfReferenceAtCurrentHeading();
-
-	// Notes on spatial tracking APIs:
-	// * Stationary reference frames are designed to provide a best-fit position relative to the
-	//   overall space. Individual positions within that reference frame are allowed to drift slightly
-	//   as the device learns more about the environment.
-	// * When precise placement of individual holograms is required, a SpatialAnchor should be used to
-	//   anchor the individual hologram to a position in the real world - for example, a point the user
-	//   indicates to be of special interest. Anchor positions do not drift, but can be corrected; the
-	//   anchor will use the corrected position starting in the next frame after the correction has
-	//   occurred.
-
-	m_terrain = nullptr;
-	m_surfaceObserver = nullptr;
-	m_meshRenderer = std::make_unique<RealtimeSurfaceMeshRenderer>(m_deviceResources);
 }
 
 void HoloLensTerrainGenDemoMain::UnregisterHolographicEventHandlers() {
@@ -108,6 +104,7 @@ void HoloLensTerrainGenDemoMain::UnregisterHolographicEventHandlers() {
 
     if (m_locator != nullptr) {
 		m_locator->PositionalTrackingDeactivating -= m_positionalTrackingDeactivatingToken;
+		m_locator->LocatabilityChanged -= m_locatabilityChangedToken;
     }
 
 	if (m_surfaceObserver != nullptr)
@@ -146,6 +143,7 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 	// associated with the current frame. Later, this coordinate system is used for
 	// for creating the stereo view matrices when rendering the sample content.
 	SpatialCoordinateSystem^ currentCoordinateSystem = m_referenceFrame->GetStationaryCoordinateSystemAtTimestamp(prediction->Timestamp);
+	//SpatialCoordinateSystem^ currentCoordinateSystem2 = m_referenceFrame2->CoordinateSystem;
 
 	// Only create a surface observer when you need to - do not create a new one each frame.
 	if (!m_surfaceObserver)	{
@@ -216,7 +214,7 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 	// If so, initialize the terrain.
 	if (!m_terrain) {
 		if (m_meshRenderer->FoundSurfaces()) {
-			m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.5f, 0.5f, 4);
+			m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.5f, 0.5f, 4, SpatialAnchor::TryCreateRelativeTo(currentCoordinateSystem));
 		}
 	}
 
@@ -235,7 +233,7 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
         // run as many times as needed to get to the current step.
         //
 		if (m_terrain) {
-			m_terrain->Update(m_timer);
+			m_terrain->Update(m_timer, currentCoordinateSystem);
 		}
 
 		m_meshRenderer->Update(m_timer, currentCoordinateSystem);
@@ -334,14 +332,16 @@ bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::Holograp
             // The view and projection matrices for each holographic camera will change
             // every frame. This function refreshes the data in the constant buffer for
             // the holographic camera indicated by cameraPose.
-           pCameraResources->UpdateViewProjectionBuffer(m_deviceResources, cameraPose, m_referenceFrame->GetStationaryCoordinateSystemAtTimestamp(prediction->Timestamp));
+            pCameraResources->UpdateViewProjectionBuffer(m_deviceResources, cameraPose, m_referenceFrame->GetStationaryCoordinateSystemAtTimestamp(prediction->Timestamp));
+			//pCameraResources->UpdateViewProjectionBuffer(m_deviceResources, cameraPose, m_referenceFrame2->CoordinateSystem);
 
             // Attach the view/projection constant buffer for this camera to the graphics pipeline.
             bool cameraActive = pCameraResources->AttachViewProjectionBuffer(m_deviceResources);
 
-
             // Only render world-locked content when positional tracking is active.
             if (cameraActive) {
+				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), false);
+
 				// Draw the sample hologram.
 				if (m_terrain) {
 					m_terrain->Render();

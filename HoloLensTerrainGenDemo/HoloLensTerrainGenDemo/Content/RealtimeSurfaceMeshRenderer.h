@@ -46,7 +46,7 @@ namespace HoloLensTerrainGenDemo
 			Windows::Foundation::Collections::IMapView<Platform::Guid,
 			Windows::Perception::Spatial::Surfaces::SpatialSurfaceInfo^>^ const& surfaceCollection);
 
-		bool FoundSurfaces() { return !m_meshCollection.empty(); }
+		bool FoundSurfaces() { return (m_meshCollection.size() > 0); }
 
 	private:
 		Concurrency::task<void> AddOrUpdateSurfaceAsync(Platform::Guid id, Windows::Perception::Spatial::Surfaces::SpatialSurfaceInfo^ newSurface);

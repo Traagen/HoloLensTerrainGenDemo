@@ -80,13 +80,13 @@ namespace HoloLensTerrainGenDemo {
         Windows::Perception::Spatial::SpatialLocator^						m_locator;
         
 		// A reference frame attached to the holographic camera.
-       // Windows::Perception::Spatial::SpatialStationaryFrameOfReference^	m_referenceFrame;
+        Windows::Perception::Spatial::SpatialStationaryFrameOfReference^	m_referenceFrame2;
 		Windows::Perception::Spatial::SpatialLocatorAttachedFrameOfReference^ m_referenceFrame;
 
 		// Event registration tokens.
         Windows::Foundation::EventRegistrationToken							m_cameraAddedToken;
         Windows::Foundation::EventRegistrationToken							m_cameraRemovedToken;
-  //      Windows::Foundation::EventRegistrationToken							m_locatabilityChangedToken;
+        Windows::Foundation::EventRegistrationToken							m_locatabilityChangedToken;
 		Windows::Foundation::EventRegistrationToken                         m_positionalTrackingDeactivatingToken;
 		Windows::Foundation::EventRegistrationToken                         m_surfacesChangedToken;
 
