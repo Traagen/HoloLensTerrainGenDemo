@@ -78,5 +78,7 @@ namespace HoloLensTerrainGenDemo {
 		unsigned int										m_iIter = 0;
 		// spatial anchor
 		Windows::Perception::Spatial::SpatialAnchor^		m_anchor;
+		// Rasterizer state
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerState;
 	};
 };

@@ -83,7 +83,6 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
 	// The simplest way to render world-locked holograms is to create a stationary reference frame
 	// when the app is launched. This is roughly analogous to creating a "world" coordinate system
 	// with the origin placed at the device's position as the app is launched.
-	//m_referenceFrame2 = m_locator->CreateStationaryFrameOfReferenceAtCurrentLocation();
 	m_referenceFrame = m_locator->CreateAttachedFrameOfReferenceAtCurrentHeading();
 }
 
@@ -143,8 +142,7 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 	// associated with the current frame. Later, this coordinate system is used for
 	// for creating the stereo view matrices when rendering the sample content.
 	SpatialCoordinateSystem^ currentCoordinateSystem = m_referenceFrame->GetStationaryCoordinateSystemAtTimestamp(prediction->Timestamp);
-	//SpatialCoordinateSystem^ currentCoordinateSystem2 = m_referenceFrame2->CoordinateSystem;
-
+	
 	// Only create a surface observer when you need to - do not create a new one each frame.
 	if (!m_surfaceObserver)	{
 		// Initialize the Surface Observer using a valid coordinate system.
@@ -219,19 +217,35 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 	}
 
     // Check for new input state since the last frame.
-    SpatialInteractionSourceState^ pointerState = m_spatialInputHandler->CheckForInput();
-    if (pointerState != nullptr) {
-		// when a pressed gesture is detected, reset the height map and generate a new terrain.
+  //  SpatialInteractionSourceState^ pointerState = m_spatialInputHandler->CheckForInput();
+  //  if (pointerState != nullptr) {
+		//// when a pressed gesture is detected, reset the height map and generate a new terrain.
+		//if (m_terrain) {
+		//	m_terrain->ResetHeightMap();
+		//}
+  //  }
+
+  // check for new input.
+	unsigned short numTaps = m_spatialInputHandler->CheckForTap();
+	switch (numTaps) {
+	case 1: // single tap detected.
 		if (m_terrain) {
 			m_terrain->ResetHeightMap();
 		}
-    }
+		break;
+	case 2: // double tap detected.
+		m_renderSurfaces = !m_renderSurfaces;
+		break;
+	}
+	if (m_spatialInputHandler->CheckForHold()) {
+		m_renderWireframe = !m_renderWireframe;
+	}
 	
+
     m_timer.Tick([&] () {
         // Put time-based updates here. By default this code will run once per frame,
         // but if you change the StepTimer to use a fixed time step this code will
         // run as many times as needed to get to the current step.
-        //
 		if (m_terrain) {
 			m_terrain->Update(m_timer, currentCoordinateSystem);
 		}
@@ -333,14 +347,13 @@ bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::Holograp
             // every frame. This function refreshes the data in the constant buffer for
             // the holographic camera indicated by cameraPose.
             pCameraResources->UpdateViewProjectionBuffer(m_deviceResources, cameraPose, m_referenceFrame->GetStationaryCoordinateSystemAtTimestamp(prediction->Timestamp));
-			//pCameraResources->UpdateViewProjectionBuffer(m_deviceResources, cameraPose, m_referenceFrame2->CoordinateSystem);
-
+			
             // Attach the view/projection constant buffer for this camera to the graphics pipeline.
             bool cameraActive = pCameraResources->AttachViewProjectionBuffer(m_deviceResources);
 
             // Only render world-locked content when positional tracking is active.
             if (cameraActive) {
-				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), false);
+				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), m_renderWireframe, !m_renderSurfaces);
 
 				// Draw the sample hologram.
 				if (m_terrain) {

@@ -80,8 +80,7 @@ namespace HoloLensTerrainGenDemo {
         Windows::Perception::Spatial::SpatialLocator^						m_locator;
         
 		// A reference frame attached to the holographic camera.
-        Windows::Perception::Spatial::SpatialStationaryFrameOfReference^	m_referenceFrame2;
-		Windows::Perception::Spatial::SpatialLocatorAttachedFrameOfReference^ m_referenceFrame;
+        Windows::Perception::Spatial::SpatialLocatorAttachedFrameOfReference^ m_referenceFrame;
 
 		// Event registration tokens.
         Windows::Foundation::EventRegistrationToken							m_cameraAddedToken;
@@ -98,5 +97,11 @@ namespace HoloLensTerrainGenDemo {
 
 		// A data handler for surface meshes.
 		std::unique_ptr<RealtimeSurfaceMeshRenderer> m_meshRenderer;
+
+		// Tracks whether we are rendering surface meshes currently.
+		bool																m_renderSurfaces = true;
+
+		// Tracks whether we are rendering surface meshes solid or wireframe.
+		bool																m_renderWireframe = false;
     };
 }

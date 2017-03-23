@@ -15,7 +15,7 @@ Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, fl
 	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), m_anchor(anchor) {
 	m_heightmap = nullptr;
 	InitializeHeightmap();
-	
+
 	SetPosition(float3(-w / 2.0f, -0.2f, h * -2.0f));
 
 	CreateDeviceDependentResources();
@@ -428,6 +428,8 @@ void Terrain::Render() {
 		context->GSSetShader(m_geometryShader.Get(), nullptr, 0);
 	}
 
+	m_deviceResources->GetD3DDeviceContext()->RSSetState(m_rasterizerState.Get());
+
 	// Attach the pixel shader.
 	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	// attach the heightmap
@@ -565,7 +567,15 @@ void Terrain::CreateDeviceDependentResources() {
 	});
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	createHeightmapTextureTask.then([this]() { m_loadingComplete = true; });
+	createHeightmapTextureTask.then([this]() {
+		// Create a default rasterizer state descriptor.
+		D3D11_RASTERIZER_DESC rasterizerDesc = CD3D11_RASTERIZER_DESC(D3D11_DEFAULT);
+
+		// Create the default rasterizer state.
+		m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rasterizerDesc, m_rasterizerState.GetAddressOf());
+
+		m_loadingComplete = true; 
+	});
 }
 
 void Terrain::ReleaseDeviceDependentResources() {
@@ -580,5 +590,5 @@ void Terrain::ReleaseDeviceDependentResources() {
 	m_indexBuffer.Reset();
 	m_hmTexture.Reset();
 	m_hmSRV.Reset();
+	m_rasterizerState.Reset();
 }
-

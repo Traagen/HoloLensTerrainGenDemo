@@ -145,7 +145,7 @@ void RealtimeSurfaceMeshRenderer::HideInactiveMeshes(IMapView<Guid, SpatialSurfa
 }
 
 // Renders one frame using the vertex, geometry, and pixel shaders.
-void RealtimeSurfaceMeshRenderer::Render(bool isStereo, bool useWireframe)
+void RealtimeSurfaceMeshRenderer::Render(bool isStereo, bool useWireframe, bool depthOnly)
 {
 	// Loading is asynchronous. Only draw geometry after it's loaded.
 	if (!m_loadingComplete)
@@ -176,29 +176,37 @@ void RealtimeSurfaceMeshRenderer::Render(bool isStereo, bool useWireframe)
 		);
 	}
 
-	if (useWireframe)
-	{
-		// Use a wireframe rasterizer state.
-		m_deviceResources->GetD3DDeviceContext()->RSSetState(m_wireframeRasterizerState.Get());
-
-		// Attach a pixel shader to render a solid color wireframe.
-		context->PSSetShader(
-			m_colorPixelShader.Get(),
-			nullptr,
-			0
-		);
-	}
-	else
-	{
-		// Use the default rasterizer state.
+	if (depthOnly) {
+		// Use the default rasterizer state as this will enable depth culling.
 		m_deviceResources->GetD3DDeviceContext()->RSSetState(m_defaultRasterizerState.Get());
 
-		// Attach a pixel shader that can do lighting.
-		context->PSSetShader(
-			m_lightingPixelShader.Get(),
-			nullptr,
-			0
-		);
+		// Attach no pixel shader to the pipeline.
+		context->PSSetShader(nullptr, nullptr, 0);
+	} else {
+		if (useWireframe)
+		{
+			// Use a wireframe rasterizer state.
+			m_deviceResources->GetD3DDeviceContext()->RSSetState(m_wireframeRasterizerState.Get());
+
+			// Attach a pixel shader to render a solid color wireframe.
+			context->PSSetShader(
+				m_colorPixelShader.Get(),
+				nullptr,
+				0
+			);
+		}
+		else
+		{
+			// Use the default rasterizer state.
+			m_deviceResources->GetD3DDeviceContext()->RSSetState(m_defaultRasterizerState.Get());
+
+			// Attach a pixel shader that can do lighting.
+			context->PSSetShader(
+				m_lightingPixelShader.Get(),
+				nullptr,
+				0
+			);
+		}
 	}
 
 	{

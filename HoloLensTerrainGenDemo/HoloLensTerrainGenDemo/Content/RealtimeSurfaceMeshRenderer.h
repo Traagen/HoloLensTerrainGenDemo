@@ -32,7 +32,7 @@ namespace HoloLensTerrainGenDemo
 			DX::StepTimer const& timer,
 			Windows::Perception::Spatial::SpatialCoordinateSystem^ coordinateSystem
 		);
-		void Render(bool isStereo, bool useWireframe);
+		void Render(bool isStereo, bool useWireframe, bool depthOnly);
 
 		bool HasSurface(Platform::Guid id);
 		void AddSurface(Platform::Guid id, Windows::Perception::Spatial::Surfaces::SpatialSurfaceInfo^ newSurface);
