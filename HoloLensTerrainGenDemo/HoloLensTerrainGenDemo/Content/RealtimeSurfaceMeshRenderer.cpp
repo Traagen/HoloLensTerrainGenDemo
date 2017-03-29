@@ -23,7 +23,7 @@ using namespace Windows::Foundation::Collections;
 using namespace Windows::Foundation::Numerics;
 using namespace Windows::Perception::Spatial;
 using namespace Windows::Perception::Spatial::Surfaces;
-
+using namespace Windows::Graphics::DirectX;
 using namespace Platform;
 
 RealtimeSurfaceMeshRenderer::RealtimeSurfaceMeshRenderer(const std::shared_ptr<DX::DeviceResources>& deviceResources) :
@@ -99,6 +99,16 @@ Concurrency::task<void> RealtimeSurfaceMeshRenderer::AddOrUpdateSurfaceAsync(Gui
 {
 	auto options = ref new SpatialSurfaceMeshOptions();
 	options->IncludeVertexNormals = true;
+	
+	IVectorView<DirectXPixelFormat>^ supportedVertexPositionFormats = options->SupportedVertexPositionFormats;
+	unsigned int formatIndex = 0;
+	if (supportedVertexPositionFormats->IndexOf(DirectXPixelFormat::R16G16B16A16IntNormalized, &formatIndex)) {
+		options->VertexPositionFormat = DirectXPixelFormat::R16G16B16A16IntNormalized;
+	}
+	IVectorView<DirectXPixelFormat>^ supportedVertexNormalFormats = options->SupportedVertexNormalFormats;
+	if (supportedVertexNormalFormats->IndexOf(DirectXPixelFormat::R8G8B8A8IntNormalized, &formatIndex))	{
+		options->VertexNormalFormat = DirectXPixelFormat::R8G8B8A8IntNormalized;
+	}
 
 	// The level of detail setting is used to limit mesh complexity, by limiting the number
 	// of triangles per cubic meter.
@@ -183,8 +193,7 @@ void RealtimeSurfaceMeshRenderer::Render(bool isStereo, bool useWireframe, bool 
 		// Attach no pixel shader to the pipeline.
 		context->PSSetShader(nullptr, nullptr, 0);
 	} else {
-		if (useWireframe)
-		{
+		if (useWireframe) {
 			// Use a wireframe rasterizer state.
 			m_deviceResources->GetD3DDeviceContext()->RSSetState(m_wireframeRasterizerState.Get());
 
@@ -194,9 +203,7 @@ void RealtimeSurfaceMeshRenderer::Render(bool isStereo, bool useWireframe, bool 
 				nullptr,
 				0
 			);
-		}
-		else
-		{
+		} else {
 			// Use the default rasterizer state.
 			m_deviceResources->GetD3DDeviceContext()->RSSetState(m_defaultRasterizerState.Get());
 

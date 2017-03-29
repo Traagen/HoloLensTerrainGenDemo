@@ -91,9 +91,6 @@ namespace HoloLensTerrainGenDemo {
 
 		// Obtains surface mapping data from the device in real time.
 		Windows::Perception::Spatial::Surfaces::SpatialSurfaceObserver^     m_surfaceObserver;
-		bool																m_surfaceAccessAllowed = false;
-		bool																m_spatialPerceptionAccessRequested = false;
-		Windows::Perception::Spatial::Surfaces::SpatialSurfaceMeshOptions^	m_surfaceMeshOptions;
 
 		// A data handler for surface meshes.
 		std::unique_ptr<RealtimeSurfaceMeshRenderer> m_meshRenderer;

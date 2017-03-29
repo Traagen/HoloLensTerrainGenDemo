@@ -16,7 +16,6 @@ using namespace Windows::Perception::Spatial;
 using namespace Windows::UI::Input::Spatial;
 using namespace std::placeholders;
 using namespace Windows::Foundation::Collections;
-using namespace Windows::Graphics::DirectX;
 using namespace Windows::Perception::Spatial::Surfaces;
 
 // Loads and initializes application assets when the application is loaded.
@@ -84,6 +83,44 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
 	// when the app is launched. This is roughly analogous to creating a "world" coordinate system
 	// with the origin placed at the device's position as the app is launched.
 	m_referenceFrame = m_locator->CreateAttachedFrameOfReferenceAtCurrentHeading();
+
+	// The spatial mapping API reads information about the user's environment. The user must
+	// grant permission to the app to use this capability of the Windows Holographic device.
+	auto requestPerceptionAccessTask = create_task(SpatialSurfaceObserver::RequestAccessAsync());
+	requestPerceptionAccessTask.then([this](Windows::Perception::Spatial::SpatialPerceptionAccessStatus status) {
+		if (status == SpatialPerceptionAccessStatus::Allowed) {
+			// Create an initial stationary reference frame to get a coordinate system from to calculate our initial
+			// bounding volume for the surface observer.
+			SpatialStationaryFrameOfReference^ baseReference = m_locator->CreateStationaryFrameOfReferenceAtCurrentLocation();
+				
+			SpatialBoundingBox aabb = {
+				{ 0.f,  0.f, 0.f },
+				{ 20.f, 20.f, 5.f },
+			};
+			SpatialBoundingVolume^ bounds = SpatialBoundingVolume::FromBox(baseReference->CoordinateSystem, aabb);
+
+			// Create the observer.
+			m_surfaceObserver = ref new SpatialSurfaceObserver();
+			if (m_surfaceObserver) {
+				m_surfaceObserver->SetBoundingVolume(bounds);
+
+				// If the surface observer was successfully created, we can initialize our
+				// collection by pulling the current data set.
+				auto mapContainingSurfaceCollection = m_surfaceObserver->GetObservedSurfaces();
+				for (auto const& pair : mapContainingSurfaceCollection) {
+					auto const& id = pair->Key;
+					auto const& surfaceInfo = pair->Value;
+					m_meshRenderer->AddSurface(id, surfaceInfo);
+				}
+
+				// We then subscribe to an event to receive up-to-date data.
+				m_surfacesChangedToken = m_surfaceObserver->ObservedSurfacesChanged +=
+					ref new TypedEventHandler<SpatialSurfaceObserver^, Platform::Object^>(
+						bind(&HoloLensTerrainGenDemoMain::OnSurfacesChanged, this, _1, _2)
+						);
+			}
+		}
+	});
 }
 
 void HoloLensTerrainGenDemoMain::UnregisterHolographicEventHandlers() {
@@ -143,66 +180,12 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 	// for creating the stereo view matrices when rendering the sample content.
 	SpatialCoordinateSystem^ currentCoordinateSystem = m_referenceFrame->GetStationaryCoordinateSystemAtTimestamp(prediction->Timestamp);
 	
-	// Only create a surface observer when you need to - do not create a new one each frame.
-	if (!m_surfaceObserver)	{
-		// Initialize the Surface Observer using a valid coordinate system.
-		if (!m_spatialPerceptionAccessRequested) {
-			// The spatial mapping API reads information about the user's environment. The user must
-			// grant permission to the app to use this capability of the Windows Holographic device.
-			auto initSurfaceObserverTask = create_task(SpatialSurfaceObserver::RequestAccessAsync());
-			initSurfaceObserverTask.then([this, currentCoordinateSystem](Windows::Perception::Spatial::SpatialPerceptionAccessStatus status) {
-				if (status == SpatialPerceptionAccessStatus::Allowed) {
-					m_surfaceAccessAllowed = true;
-				}
-			});
-
-			m_spatialPerceptionAccessRequested = true;
-		}
-	}
-
-	if (m_surfaceAccessAllowed)	{
+	if (m_surfaceObserver)	{
 		SpatialBoundingBox aabb =	{
 			{ 0.f,  0.f, 0.f },
 			{ 20.f, 20.f, 5.f },
 		};
 		SpatialBoundingVolume^ bounds = SpatialBoundingVolume::FromBox(currentCoordinateSystem, aabb);
-
-		// If status is Allowed, we can create the surface observer.
-		if (!m_surfaceObserver)	{
-			// First, we'll set up the surface observer to use our preferred data formats.
-			// In this example, a "preferred" format is chosen that is compatible with our precompiled shader pipeline.
-			m_surfaceMeshOptions = ref new SpatialSurfaceMeshOptions();
-			IVectorView<DirectXPixelFormat>^ supportedVertexPositionFormats = m_surfaceMeshOptions->SupportedVertexPositionFormats;
-			unsigned int formatIndex = 0;
-			if (supportedVertexPositionFormats->IndexOf(DirectXPixelFormat::R16G16B16A16IntNormalized, &formatIndex)) {
-				m_surfaceMeshOptions->VertexPositionFormat = DirectXPixelFormat::R16G16B16A16IntNormalized;
-			}
-			IVectorView<DirectXPixelFormat>^ supportedVertexNormalFormats = m_surfaceMeshOptions->SupportedVertexNormalFormats;
-			if (supportedVertexNormalFormats->IndexOf(DirectXPixelFormat::R8G8B8A8IntNormalized, &formatIndex))	{
-				m_surfaceMeshOptions->VertexNormalFormat = DirectXPixelFormat::R8G8B8A8IntNormalized;
-			}
-
-			// Create the observer.
-			m_surfaceObserver = ref new SpatialSurfaceObserver();
-			if (m_surfaceObserver) {
-				m_surfaceObserver->SetBoundingVolume(bounds);
-
-				// If the surface observer was successfully created, we can initialize our
-				// collection by pulling the current data set.
-				auto mapContainingSurfaceCollection = m_surfaceObserver->GetObservedSurfaces();
-				for (auto const& pair : mapContainingSurfaceCollection)	{
-					auto const& id = pair->Key;
-					auto const& surfaceInfo = pair->Value;
-					m_meshRenderer->AddSurface(id, surfaceInfo);
-				}
-
-				// We then subcribe to an event to receive up-to-date data.
-				m_surfacesChangedToken = m_surfaceObserver->ObservedSurfacesChanged +=
-					ref new TypedEventHandler<SpatialSurfaceObserver^, Platform::Object^>(
-						bind(&HoloLensTerrainGenDemoMain::OnSurfacesChanged, this, _1, _2)
-						);
-			}
-		}
 
 		// Keep the surface observer positioned at the device's location.
 		m_surfaceObserver->SetBoundingVolume(bounds);
@@ -229,19 +212,18 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 	unsigned short numTaps = m_spatialInputHandler->CheckForTap();
 	switch (numTaps) {
 	case 1: // single tap detected.
-		if (m_terrain) {
-			m_terrain->ResetHeightMap();
-		}
+		m_renderWireframe = !m_renderWireframe;
 		break;
 	case 2: // double tap detected.
 		m_renderSurfaces = !m_renderSurfaces;
 		break;
 	}
 	if (m_spatialInputHandler->CheckForHold()) {
-		m_renderWireframe = !m_renderWireframe;
+		if (m_terrain) {
+			m_terrain->ResetHeightMap();
+		}
 	}
 	
-
     m_timer.Tick([&] () {
         // Put time-based updates here. By default this code will run once per frame,
         // but if you change the StepTimer to use a fixed time step this code will
@@ -350,16 +332,16 @@ bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::Holograp
 			
             // Attach the view/projection constant buffer for this camera to the graphics pipeline.
             bool cameraActive = pCameraResources->AttachViewProjectionBuffer(m_deviceResources);
-
-            // Only render world-locked content when positional tracking is active.
-            if (cameraActive) {
+			
+			// Only render world-locked content when positional tracking is active.
+			if (cameraActive) {
 				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), m_renderWireframe, !m_renderSurfaces);
 
 				// Draw the sample hologram.
 				if (m_terrain) {
 					m_terrain->Render();
 				}
-            }
+			}
 
             atLeastOneCameraRendered = true;
         }
