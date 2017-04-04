@@ -34,7 +34,17 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
 	m_surfaceObserver = nullptr;
 	m_meshRenderer = std::make_unique<RealtimeSurfaceMeshRenderer>(m_deviceResources);
 
-	m_spatialInputHandler = std::make_unique<SpatialInputHandler>();
+	// Initialize the GUI
+	m_guiManager = std::make_unique<GUIManager>();
+
+	// The interaction manager provides an event that informs the app when
+	// spatial interactions are detected.
+	m_interactionManager = SpatialInteractionManager::GetForCurrentView();
+
+	m_interactionDetectedEventToken = m_interactionManager->InteractionDetected +=
+		ref new TypedEventHandler<SpatialInteractionManager^, SpatialInteractionDetectedEventArgs^>(
+			bind(&HoloLensTerrainGenDemoMain::OnInteractionDetected, this, _1, _2)
+			);
 
 	// Use the default SpatialLocator to track the motion of the device.
 	m_locator = SpatialLocator::GetDefault();
@@ -147,6 +157,11 @@ void HoloLensTerrainGenDemoMain::UnregisterHolographicEventHandlers() {
 	{
 		m_surfaceObserver->ObservedSurfacesChanged -= m_surfacesChangedToken;
 	}
+
+	// Unregister our handler for the InteractionDetected event.
+	if (m_interactionManager) {
+		m_interactionManager->InteractionDetected -= m_interactionDetectedEventToken;
+	}
 }
 
 HoloLensTerrainGenDemoMain::~HoloLensTerrainGenDemoMain() {
@@ -199,31 +214,6 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 		}
 	}
 
-    // Check for new input state since the last frame.
-  //  SpatialInteractionSourceState^ pointerState = m_spatialInputHandler->CheckForInput();
-  //  if (pointerState != nullptr) {
-		//// when a pressed gesture is detected, reset the height map and generate a new terrain.
-		//if (m_terrain) {
-		//	m_terrain->ResetHeightMap();
-		//}
-  //  }
-
-  // check for new input.
-	unsigned short numTaps = m_spatialInputHandler->CheckForTap();
-	switch (numTaps) {
-	case 1: // single tap detected.
-		m_renderWireframe = !m_renderWireframe;
-		break;
-	case 2: // double tap detected.
-		m_renderSurfaces = !m_renderSurfaces;
-		break;
-	}
-	if (m_spatialInputHandler->CheckForHold()) {
-		if (m_terrain) {
-			m_terrain->ResetHeightMap();
-		}
-	}
-	
     m_timer.Tick([&] () {
         // Put time-based updates here. By default this code will run once per frame,
         // but if you change the StepTimer to use a fixed time step this code will
@@ -335,7 +325,7 @@ bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::Holograp
 			
 			// Only render world-locked content when positional tracking is active.
 			if (cameraActive) {
-				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), m_renderWireframe, !m_renderSurfaces);
+				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), m_guiManager->GetRenderWireframe(), !m_guiManager->GetRenderSurfaces());
 
 				// Draw the sample hologram.
 				if (m_terrain) {
@@ -500,4 +490,12 @@ void HoloLensTerrainGenDemoMain::OnSurfacesChanged(SpatialSurfaceObserver^ sende
 	// The system can including them in the collection again later, in which case
 	// they will no longer be hidden.
 	m_meshRenderer->HideInactiveMeshes(surfaceCollection);
+}
+
+void HoloLensTerrainGenDemoMain::OnInteractionDetected(SpatialInteractionManager^ sender, SpatialInteractionDetectedEventArgs^ args) {
+	// if the terrain does not exist, or the interaction does not apply to the terrain,
+	// then send the interaction to the gui manager.
+	if (!m_terrain || !m_terrain->CaptureInteraction(args->Interaction)) {
+		m_guiManager->CaptureInteraction(args->Interaction);
+	}
 }

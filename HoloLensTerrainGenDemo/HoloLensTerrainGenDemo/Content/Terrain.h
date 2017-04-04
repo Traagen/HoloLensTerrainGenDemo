@@ -28,6 +28,8 @@ namespace HoloLensTerrainGenDemo {
 		// Reset the Height map to all zeros.
 		void ResetHeightMap();
 
+		bool CaptureInteraction(Windows::UI::Input::Spatial::SpatialInteraction^ interaction);
+
 	private:
 		// initializes the height map to the supplied dimensions.
 		void InitializeHeightmap();
@@ -41,6 +43,12 @@ namespace HoloLensTerrainGenDemo {
 		// Dx = 1 - (|w/2 - px| / (w/2))
 		// Dy = 1 - (|h/2 - py| / (h/2))
 		float CalcManhattanDistFromCenter(Windows::Foundation::Numerics::float2 p);
+		// Find the current heighest value in the terrain.
+		float FindMaxHeight();
+
+		// Event handler for gesture recognition.
+		void OnTap(Windows::UI::Input::Spatial::SpatialGestureRecognizer^ sender,
+			Windows::UI::Input::Spatial::SpatialTappedEventArgs^ args);
 
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources>			    m_deviceResources;
@@ -60,7 +68,9 @@ namespace HoloLensTerrainGenDemo {
 		uint32											    m_indexCount = 0;
 		// Variables used with the rendering loop.
 		bool											    m_loadingComplete = false;
-		Windows::Foundation::Numerics::float3			    m_position = { 0.f, -0.2f, -1.f };
+		Windows::Foundation::Numerics::float3			    m_position = { 0.f, 0.f, 0.f };
+		float												m_height = 0.f;
+		float												m_width = 0.f;
 		// If the current D3D Device supports VPRT, we can avoid using a geometry
 		// shader just to set the render target array index.
 		bool											    m_usingVprtShaders = false;
@@ -80,5 +90,11 @@ namespace HoloLensTerrainGenDemo {
 		Windows::Perception::Spatial::SpatialAnchor^		m_anchor;
 		// Rasterizer state
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerState;
+
+		// Recognizes valid gestures passed to the Terrain object.
+		Windows::UI::Input::Spatial::SpatialGestureRecognizer^ m_gestureRecognizer;
+
+		// event token
+		Windows::Foundation::EventRegistrationToken			m_tapGestureEventToken;
 	};
 };

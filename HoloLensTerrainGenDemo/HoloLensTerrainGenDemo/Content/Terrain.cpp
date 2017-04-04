@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Terrain.h"
 #include "Common\DirectXHelper.h"
+#include "Common\MathFunctions.h"
 #include <stdlib.h>
 
 using namespace HoloLensTerrainGenDemo;
@@ -8,15 +9,28 @@ using namespace Concurrency;
 using namespace DirectX;
 using namespace Windows::Foundation::Numerics;
 using namespace Windows::UI::Input::Spatial;
+using namespace Windows::Perception::Spatial;
+using namespace std::placeholders;
+using namespace MathFunctions;
 
 // provide h and w in centimeters.
 // res is number of triangle edges per centimeter.
-Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, Windows::Perception::Spatial::SpatialAnchor^ anchor) :
-	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), m_anchor(anchor) {
+Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, SpatialAnchor^ anchor) :
+	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), 
+	m_anchor(anchor), m_height(h), m_width(w) {
 	m_heightmap = nullptr;
 	InitializeHeightmap();
 
-	SetPosition(float3(-w / 2.0f, -0.2f, h * -2.0f));
+	SetPosition(float3(-w / 2.0f, -0.2f, -h / 2.0f));
+
+	// Set up a general gesture recognizer for input.
+	m_gestureRecognizer = ref new SpatialGestureRecognizer(SpatialGestureSettings::Tap);
+
+	m_tapGestureEventToken =
+		m_gestureRecognizer->Tapped +=
+		ref new Windows::Foundation::TypedEventHandler<SpatialGestureRecognizer^, SpatialTappedEventArgs^>(
+			std::bind(&Terrain::OnTap, this, _1, _2)
+			);
 
 	CreateDeviceDependentResources();
 }
@@ -24,6 +38,10 @@ Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, fl
 Terrain::~Terrain() {
 	if (m_heightmap) {
 		delete[] m_heightmap;
+	}
+
+	if (m_gestureRecognizer) {
+		m_gestureRecognizer->Tapped -= m_tapGestureEventToken;
 	}
 }
 
@@ -136,7 +154,7 @@ void Terrain::IterateFaultFormation(unsigned int treeDepth, float treeAmplitude)
 // Calculation is calculated as Dx * Dy
 // Dx = 1 - (|w/2 - px| / (w/2))
 // Dy = 1 - (|h/2 - py| / (h/2))
-float Terrain::CalcManhattanDistFromCenter(Windows::Foundation::Numerics::float2 p) {
+float Terrain::CalcManhattanDistFromCenter(float2 p) {
 	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
 	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
 	float h2 = (float)h / 2.0f;
@@ -145,6 +163,23 @@ float Terrain::CalcManhattanDistFromCenter(Windows::Foundation::Numerics::float2
 	float Dy = 1 - (abs(h2 - p.y) / h2);
 
 	return min(Dx * Dy * 4.0f, 1.0f);
+}
+
+// Find the current heighest value in the terrain.
+float Terrain::FindMaxHeight() {
+	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
+	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	float max = 0.0f;
+
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			if (m_heightmap[x + y * w] > max) {
+				max = m_heightmap[x + y * w];
+			}
+		}
+	}
+
+	return max;
 }
 
 // Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
@@ -324,7 +359,7 @@ void Terrain::PositionHologram(SpatialPointerPose^ pointerPose) {
 
 // Called once per frame. Calculates and sets the model matrix
 // relative to the position transform indicated by hologramPositionTransform.
-void Terrain::Update(const DX::StepTimer& timer, Windows::Perception::Spatial::SpatialCoordinateSystem^ coordinateSystem) {
+void Terrain::Update(const DX::StepTimer& timer, SpatialCoordinateSystem^ coordinateSystem) {
 	// Loading is asynchronous. Resources must be created before drawing can occur.
 	if (!m_loadingComplete) {
 		return;
@@ -591,4 +626,36 @@ void Terrain::ReleaseDeviceDependentResources() {
 	m_hmTexture.Reset();
 	m_hmSRV.Reset();
 	m_rasterizerState.Reset();
+}
+
+void Terrain::OnTap(SpatialGestureRecognizer^ sender, SpatialTappedEventArgs^ args) {
+	ResetHeightMap();
+}
+
+bool Terrain::CaptureInteraction(SpatialInteraction^ interaction) {
+	// Intersect the user's gaze with the terrain to see if this interaction is
+	// meant for the terrain.
+	auto gaze = interaction->SourceState->TryGetPointerPose(m_anchor->CoordinateSystem);
+	auto head = gaze->Head;
+	auto position = head->Position;
+	auto look = head->ForwardDirection;
+
+	// calculate AABB for the terrain.
+	AABB vol;
+	vol.max.x = m_position.x + m_width;
+	vol.max.y = m_position.y + FindMaxHeight();
+	vol.max.z = m_position.z + m_height;
+	vol.min.x = m_position.x;
+	vol.min.y = m_position.y;
+	vol.min.z = m_position.z;
+
+
+	if (RayAABBIntersect(position, look, vol)) {
+		// if so, handle the interaction and return true.
+		m_gestureRecognizer->CaptureInteraction(interaction);
+		return true;
+	}
+
+	// if it doesn't intersect, then don't handle the interaction and return false.
+	return false;
 }

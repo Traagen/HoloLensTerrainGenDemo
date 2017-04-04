@@ -60,9 +60,6 @@
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="AppView.cpp" />
-    <ClCompile Include="Content\SpatialInputHandler.cpp">
-      <Filter>Content</Filter>
-    </ClCompile>
     <ClCompile Include="HoloLensTerrainGenDemoMain.cpp" />
     <ClCompile Include="Content\Terrain.cpp">
       <Filter>Content</Filter>
@@ -91,13 +88,13 @@
     <ClCompile Include="Content\RealtimeSurfaceMeshRenderer.cpp">
       <Filter>Content</Filter>
     </ClCompile>
+    <ClCompile Include="Content\GUIManager.cpp">
+      <Filter>Content</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="AppView.h" />
-    <ClInclude Include="Content\SpatialInputHandler.h">
-      <Filter>Content</Filter>
-    </ClInclude>
     <ClInclude Include="Content\ShaderStructures.h">
       <Filter>Content</Filter>
     </ClInclude>
@@ -138,6 +135,12 @@
     </ClInclude>
     <ClInclude Include="GetDataFromIBuffer.h">
       <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="Content\GUIManager.h">
+      <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\MathFunctions.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

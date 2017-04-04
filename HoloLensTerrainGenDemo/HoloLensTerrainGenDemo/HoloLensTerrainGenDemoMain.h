@@ -2,7 +2,7 @@
 
 #include "Common\DeviceResources.h"
 #include "Common\StepTimer.h"
-#include "Content\SpatialInputHandler.h"
+#include "Content\GUIManager.h"
 #include "Content\Terrain.h"
 #include "Content\RealtimeSurfaceMeshRenderer.h"
 
@@ -57,13 +57,21 @@ namespace HoloLensTerrainGenDemo {
 			Windows::Perception::Spatial::SpatialLocator^ sender,
 			Windows::Perception::Spatial::SpatialLocatorPositionalTrackingDeactivatingEventArgs^ args);
 
+		// Interaction event handler.
+		void OnInteractionDetected(
+			Windows::UI::Input::Spatial::SpatialInteractionManager^ sender,
+			Windows::UI::Input::Spatial::SpatialInteractionDetectedEventArgs^ args);
+
         // Clears event registration state. Used when changing to a new HolographicSpace
         // and when tearing down AppMain.
         void UnregisterHolographicEventHandlers();
 
-        // Listens for the Pressed spatial input event.
-        std::shared_ptr<SpatialInputHandler>								m_spatialInputHandler;
-		
+        // Manages GUI elements.
+        std::shared_ptr<GUIManager>											m_guiManager;
+
+		// API objects used to process gesture input, and generate gesture events.
+		Windows::UI::Input::Spatial::SpatialInteractionManager^			   m_interactionManager;
+	
 		// Our terrain
 		std::unique_ptr<Terrain>											m_terrain;
         
@@ -88,17 +96,12 @@ namespace HoloLensTerrainGenDemo {
         Windows::Foundation::EventRegistrationToken							m_locatabilityChangedToken;
 		Windows::Foundation::EventRegistrationToken                         m_positionalTrackingDeactivatingToken;
 		Windows::Foundation::EventRegistrationToken                         m_surfacesChangedToken;
+		Windows::Foundation::EventRegistrationToken						    m_interactionDetectedEventToken;
 
 		// Obtains surface mapping data from the device in real time.
 		Windows::Perception::Spatial::Surfaces::SpatialSurfaceObserver^     m_surfaceObserver;
 
 		// A data handler for surface meshes.
 		std::unique_ptr<RealtimeSurfaceMeshRenderer> m_meshRenderer;
-
-		// Tracks whether we are rendering surface meshes currently.
-		bool																m_renderSurfaces = true;
-
-		// Tracks whether we are rendering surface meshes solid or wireframe.
-		bool																m_renderWireframe = false;
     };
 }
