@@ -13,6 +13,7 @@
 
 #include "Common\DeviceResources.h"
 #include "ShaderStructures.h"
+#include "Common\PlaneFinding\PlaneFinding.h"
 
 namespace HoloLensTerrainGenDemo
 {
@@ -53,6 +54,8 @@ namespace HoloLensTerrainGenDemo
 		void SetIsActive(const bool& isActive) { m_isActive = isActive; }
 		void SetColorFadeTimer(const float& duration) { m_colorFadeTimeout = duration; m_colorFadeTimer = 0.f; }
 
+		// Return a MeshData object from the Raw data buffers.
+		PlaneFinding::MeshData ConstructMeshData();
 	private:
 		void SwapVertexBuffers();
 		void CreateDirectXBuffer(
@@ -89,5 +92,7 @@ namespace HoloLensTerrainGenDemo
 		float  m_colorFadeTimeout = -1.f;
 
 		std::mutex m_meshResourcesMutex;
+
+		PlaneFinding::MeshData	m_localMesh;
 	};
 }

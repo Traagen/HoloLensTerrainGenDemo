@@ -17,12 +17,15 @@
 #include "Common\StepTimer.h"
 #include "GetDataFromIBuffer.h"
 #include "SurfaceMesh.h"
+#include <DirectXPackedVector.h>
 
 using namespace HoloLensTerrainGenDemo;
 using namespace DirectX;
 using namespace Windows::Perception::Spatial;
 using namespace Windows::Perception::Spatial::Surfaces;
 using namespace Windows::Foundation::Numerics;
+using namespace PlaneFinding;
+using namespace DirectX::PackedVector;
 
 SurfaceMesh::SurfaceMesh()
 {
@@ -44,6 +47,8 @@ void SurfaceMesh::UpdateSurface(
 {
 	m_surfaceMesh = surfaceMesh;
 	m_updateNeeded = true;
+
+	m_localMesh = ConstructMeshData();
 }
 
 void SurfaceMesh::UpdateDeviceBasedResources(
@@ -120,6 +125,10 @@ void SurfaceMesh::UpdateTransform(
 			// If the transform can be acquired, this spatial mesh is valid right now and
 			// we have the information we need to draw it this frame.
 			transform = XMLoadFloat4x4(&tryTransform->Value);
+
+			// save the transform to the local MeshData object as well.
+			XMStoreFloat4x4(&m_localMesh.transform, transform);
+
 			m_lastActiveTime = static_cast<float>(timer.GetTotalSeconds());
 		}
 		else
@@ -377,4 +386,64 @@ void SurfaceMesh::ReleaseDeviceDependentResources()
 
 	m_constantBufferCreated = false;
 	m_loadingComplete = false;
+}
+
+// Return a MeshData object from the Raw data buffers.
+MeshData SurfaceMesh::ConstructMeshData() {
+	// we configured RealtimeSurfaceMeshRenderer to ensure that the data
+	// we are receiving is in the correct format.
+	// Vertex Positions: R16G16B16A16IntNormalized
+	// Vertex Normals: R8G8B8A8IntNormalized
+	// Indices: R16UInt (we'll convert it from here to R32Int. HoloLens Spatial Mapping doesn't appear to support this format directly.
+
+	MeshData newMesh;
+	newMesh.vertCount = m_surfaceMesh->VertexPositions->ElementCount;
+	newMesh.verts = new XMFLOAT3[newMesh.vertCount];
+	newMesh.normals = new XMFLOAT3[newMesh.vertCount];
+	newMesh.indexCount = m_surfaceMesh->TriangleIndices->ElementCount;
+	newMesh.indices = new INT32[newMesh.indexCount];
+
+	XMSHORTN4* rawVertexData = (XMSHORTN4*)GetDataFromIBuffer(m_surfaceMesh->VertexPositions->Data);
+	XMBYTEN4* rawNormalData = (XMBYTEN4*)GetDataFromIBuffer(m_surfaceMesh->VertexNormals->Data);
+	UINT16* rawIndexData = (UINT16*)GetDataFromIBuffer(m_surfaceMesh->TriangleIndices->Data);
+	float3 vertexScale = m_surfaceMesh->VertexPositionScale;
+	
+	for (int index = 0; index < newMesh.vertCount; ++index) {
+		// read the current position as an XMSHORTN4.
+		XMSHORTN4 currentPos = XMSHORTN4(rawVertexData[index]);
+		XMFLOAT4 vals;
+
+		// XMVECTOR knows how to convert XMSHORTN4 to actual floating point coordinates.
+		XMVECTOR vec = XMLoadShortN4(&currentPos);
+
+		// Store that into an XMFLOAT4 so we can read the values.
+		XMStoreFloat4(&vals, vec);
+
+		// Scale by the vertex scale.
+		XMFLOAT4 scaledPos = XMFLOAT4(vals.x * vertexScale.x, vals.y * vertexScale.y, vals.z * vertexScale.z, vals.w);
+
+		// Then we need to down scale the vector since it will be rescaled when rendering (ie divide by w).
+		// do we?
+		float4 downScaledPos = float4(scaledPos.x, scaledPos.y, scaledPos.z, scaledPos.w);
+
+		newMesh.verts[index].x = downScaledPos.x;
+		newMesh.verts[index].y = downScaledPos.y;
+		newMesh.verts[index].z = downScaledPos.z;
+
+		// now do the same for the normal.
+		XMBYTEN4 currentNormal = XMBYTEN4(rawNormalData[index]);
+		XMFLOAT4 norms;
+		XMVECTOR norm = XMLoadByteN4(&currentNormal);
+		XMStoreFloat4(&norms, norm);
+		// No need to downscale. Does nothing.
+		newMesh.normals[index].x = norms.x;
+		newMesh.normals[index].y = norms.y;
+		newMesh.normals[index].z = norms.z;
+	}
+
+	for (int index = 0; index < newMesh.indexCount; ++index) {
+		newMesh.indices[index] = rawIndexData[index];
+	}
+
+	return newMesh;
 }

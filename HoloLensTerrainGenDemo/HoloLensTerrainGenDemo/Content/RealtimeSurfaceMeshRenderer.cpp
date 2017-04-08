@@ -109,6 +109,11 @@ Concurrency::task<void> RealtimeSurfaceMeshRenderer::AddOrUpdateSurfaceAsync(Gui
 	if (supportedVertexNormalFormats->IndexOf(DirectXPixelFormat::R8G8B8A8IntNormalized, &formatIndex))	{
 		options->VertexNormalFormat = DirectXPixelFormat::R8G8B8A8IntNormalized;
 	}
+	IVectorView<DirectXPixelFormat>^ supportedTriangleIndexFormats = options->SupportedTriangleIndexFormats;
+	if (supportedTriangleIndexFormats->IndexOf(DirectXPixelFormat::R16UInt, &formatIndex))
+	{
+	    options->TriangleIndexFormat = DirectXPixelFormat::R16UInt;
+	}
 
 	// The level of detail setting is used to limit mesh complexity, by limiting the number
 	// of triangles per cubic meter.
