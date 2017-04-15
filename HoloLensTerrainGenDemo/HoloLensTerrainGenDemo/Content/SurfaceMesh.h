@@ -44,6 +44,7 @@ namespace HoloLensTerrainGenDemo
 
 		void CreateVertexResources(ID3D11Device* device);
 		void CreateDeviceDependentResources(ID3D11Device* device);
+	
 		void ReleaseVertexResources();
 		void ReleaseDeviceDependentResources();
 
@@ -54,16 +55,19 @@ namespace HoloLensTerrainGenDemo
 		void SetIsActive(const bool& isActive) { m_isActive = isActive; }
 		void SetColorFadeTimer(const float& duration) { m_colorFadeTimeout = duration; m_colorFadeTimer = 0.f; }
 
-		// Return a MeshData object from the Raw data buffers.
-		PlaneFinding::MeshData ConstructMeshData();
+
 	private:
 		void SwapVertexBuffers();
-		void CreateDirectXBuffer(
-			ID3D11Device* device,
-			D3D11_BIND_FLAG binding,
-			Windows::Storage::Streams::IBuffer^ buffer,
-			ID3D11Buffer** target
-		);
+		void CreateDirectXBuffer(ID3D11Device* device, D3D11_BIND_FLAG binding,	Windows::Storage::Streams::IBuffer^ buffer,	ID3D11Buffer** target);
+
+		// Deletes data stored in m_localMesh and recreates it.
+		void UpdateLocalMesh();
+
+		// Deletes m_localMesh.
+		void ClearLocalMesh();
+
+		// Return a MeshData object from the Raw data buffers.
+		PlaneFinding::MeshData ConstructMeshData();
 
 		Windows::Perception::Spatial::Surfaces::SpatialSurfaceMesh^ m_surfaceMesh = nullptr;
 
