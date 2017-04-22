@@ -48,6 +48,7 @@ namespace HoloLensTerrainGenDemo
 
 		bool FoundSurfaces() { return (m_meshCollection.size() > 0); }
 
+		std::vector<PlaneFinding::BoundedPlane> GetPlanes(Windows::Perception::Spatial::SpatialCoordinateSystem ^baseCoordinateSystem);
 	private:
 		Concurrency::task<void> AddOrUpdateSurfaceAsync(Platform::Guid id, Windows::Perception::Spatial::Surfaces::SpatialSurfaceInfo^ newSurface);
 

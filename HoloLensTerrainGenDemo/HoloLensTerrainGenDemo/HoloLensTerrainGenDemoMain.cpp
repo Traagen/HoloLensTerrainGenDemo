@@ -23,6 +23,9 @@ HoloLensTerrainGenDemoMain::HoloLensTerrainGenDemoMain(const std::shared_ptr<DX:
     m_deviceResources(deviceResources) {
     // Register to be notified if the device is lost or recreated.
     m_deviceResources->RegisterDeviceNotify(this);
+
+	m_planeReadTimer.SetFixedTimeStep(true);
+	m_planeReadTimer.SetTargetElapsedSeconds(5.0f);
 }
 
 void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holographicSpace) {
@@ -33,6 +36,7 @@ void HoloLensTerrainGenDemoMain::SetHolographicSpace(HolographicSpace^ holograph
 	m_terrain = nullptr;
 	m_surfaceObserver = nullptr;
 	m_meshRenderer = std::make_unique<RealtimeSurfaceMeshRenderer>(m_deviceResources);
+	m_planeRenderer = std::make_unique<SurfacePlaneRenderer>(m_deviceResources);
 
 	// Initialize the GUI
 	m_guiManager = std::make_unique<GUIManager>();
@@ -225,10 +229,17 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 		m_meshRenderer->Update(m_timer, currentCoordinateSystem);
     });
 
+	// asynchronously attempt to get a list of planes.
+	m_planeReadTimer.Tick([&]() {
+		auto getPlanesTask = create_task([this, currentCoordinateSystem] {
+			auto planes = m_meshRenderer->GetPlanes(currentCoordinateSystem);
+			m_planeRenderer->UpdatePlanes(planes);
+		});
+	});
+
 	// We complete the frame update by using information about our content positioning
     // to set the focus point.
-
-    for (auto cameraPose : prediction->CameraPoses) {
+	for (auto cameraPose : prediction->CameraPoses) {
         // The HolographicCameraRenderingParameters class provides access to set
         // the image stabilization parameters.
         HolographicCameraRenderingParameters^ renderingParameters = holographicFrame->GetRenderingParameters(cameraPose);

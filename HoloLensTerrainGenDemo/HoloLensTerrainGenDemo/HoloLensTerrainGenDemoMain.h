@@ -5,6 +5,7 @@
 #include "Content\GUIManager.h"
 #include "Content\Terrain.h"
 #include "Content\RealtimeSurfaceMeshRenderer.h"
+#include "Content\SurfacePlaneRenderer.h"
 
 // Updates, renders, and presents holographic content using Direct3D.
 namespace HoloLensTerrainGenDemo {
@@ -80,6 +81,8 @@ namespace HoloLensTerrainGenDemo {
         
 		// Render loop timer.
         DX::StepTimer													    m_timer;
+		// Slow timer used to update plane finding.
+		DX::StepTimer														m_planeReadTimer;
         
 		// Represents the holographic space around the user.
         Windows::Graphics::Holographic::HolographicSpace^			        m_holographicSpace;
@@ -103,5 +106,8 @@ namespace HoloLensTerrainGenDemo {
 
 		// A data handler for surface meshes.
 		std::unique_ptr<RealtimeSurfaceMeshRenderer> m_meshRenderer;
+
+		// A data handler for surface planes.
+		std::unique_ptr<SurfacePlaneRenderer> m_planeRenderer;
     };
 }

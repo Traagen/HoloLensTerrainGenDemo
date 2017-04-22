@@ -403,3 +403,19 @@ Windows::Foundation::DateTime RealtimeSurfaceMeshRenderer::GetLastUpdateTime(Pla
 		return zero;
 	}
 }
+
+vector<PlaneFinding::BoundedPlane> RealtimeSurfaceMeshRenderer::GetPlanes(SpatialCoordinateSystem ^baseCoordinateSystem) {
+	vector<PlaneFinding::BoundedPlane> allPlanes;
+
+	for (auto& iter : m_meshCollection) {
+		auto planes = iter.second.GetPlanes(baseCoordinateSystem);
+		// add all planes found from this surface mesh to the list.
+		allPlanes.insert(allPlanes.end(), planes.begin(), planes.end());
+	}
+
+	// attempt to merge the planes created by the collection to create a smaller set of larger planes.
+	//auto mergedPlanes = PlaneFinding::MergePlanes(allPlanes.size(), allPlanes.data(), 0.0f, 5.0f);
+
+	//return mergedPlanes;
+	return allPlanes;
+}

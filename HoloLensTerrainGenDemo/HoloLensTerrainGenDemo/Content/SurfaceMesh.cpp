@@ -53,19 +53,6 @@ SurfaceMesh::~SurfaceMesh() {
 void SurfaceMesh::UpdateSurface(SpatialSurfaceMesh^ surfaceMesh) {
 	m_surfaceMesh = surfaceMesh;
 	m_updateNeeded = true;
-
-	UpdateLocalMesh();
-
-	// the snap to gravity threshold appears to be an angle in degrees from horizontal that we will snap to horizontal.
-	// see planefinding/util.cpp for SnapToGravity() method where it is used.
-	auto planeList = FindPlanes(1, &m_localMesh, 5.0f); 
-
-	for (auto p : planeList) {
-		auto c = p.bounds.Center;
-		auto o = p.bounds.Orientation;
-		auto e = p.bounds.Extents;
-		auto a = p.area;
-	}
 }
 
 void SurfaceMesh::UpdateDeviceBasedResources(ID3D11Device* device) {
@@ -125,9 +112,6 @@ void SurfaceMesh::UpdateTransform(ID3D11Device* device, ID3D11DeviceContext* con
 			// If the transform can be acquired, this spatial mesh is valid right now and
 			// we have the information we need to draw it this frame.
 			transform = XMLoadFloat4x4(&tryTransform->Value);
-
-			// save the transform to the local MeshData object as well.
-			XMStoreFloat4x4(&m_localMesh.transform, transform);
 
 			m_lastActiveTime = static_cast<float>(timer.GetTotalSeconds());
 		} else {
@@ -309,17 +293,10 @@ void SurfaceMesh::ReleaseDeviceDependentResources() {
 	m_loadingComplete = false;
 }
 
-// Deletes data stored in m_localMesh and recreates it.
-void SurfaceMesh::UpdateLocalMesh() {
-	ClearLocalMesh();
-	m_localMesh = ConstructMeshData();
-}
-
 // Deletes m_localMesh.
 void SurfaceMesh::ClearLocalMesh() {
 	if (m_localMesh.verts) {
 		delete m_localMesh.verts;
-		m_localMesh.vertCount = 0;
 	}
 
 	if (m_localMesh.normals) {
@@ -328,33 +305,33 @@ void SurfaceMesh::ClearLocalMesh() {
 
 	if (m_localMesh.indices) {
 		delete m_localMesh.indices;
-		m_localMesh.indexCount = 0;
 	}
 
+	m_localMesh.vertCount = 0;
+	m_localMesh.indexCount = 0;
 	m_localMesh.transform = XMFloat4x4Identity;
 }
 
 // Return a MeshData object from the Raw data buffers.
-MeshData SurfaceMesh::ConstructMeshData() {
+void SurfaceMesh::ConstructLocalMesh(Windows::Perception::Spatial::SpatialCoordinateSystem^ baseCoordinateSystem) {
 	// we configured RealtimeSurfaceMeshRenderer to ensure that the data
 	// we are receiving is in the correct format.
 	// Vertex Positions: R16G16B16A16IntNormalized
 	// Vertex Normals: R8G8B8A8IntNormalized
 	// Indices: R16UInt (we'll convert it from here to R32Int. HoloLens Spatial Mapping doesn't appear to support this format directly.
 
-	MeshData newMesh;
-	newMesh.vertCount = m_surfaceMesh->VertexPositions->ElementCount;
-	newMesh.verts = new XMFLOAT3[newMesh.vertCount];
-	newMesh.normals = new XMFLOAT3[newMesh.vertCount];
-	newMesh.indexCount = m_surfaceMesh->TriangleIndices->ElementCount;
-	newMesh.indices = new INT32[newMesh.indexCount];
+	m_localMesh.vertCount = m_surfaceMesh->VertexPositions->ElementCount;
+	m_localMesh.verts = new XMFLOAT3[m_localMesh.vertCount];
+	m_localMesh.normals = new XMFLOAT3[m_localMesh.vertCount];
+	m_localMesh.indexCount = m_surfaceMesh->TriangleIndices->ElementCount;
+	m_localMesh.indices = new INT32[m_localMesh.indexCount];
 
 	XMSHORTN4* rawVertexData = (XMSHORTN4*)GetDataFromIBuffer(m_surfaceMesh->VertexPositions->Data);
 	XMBYTEN4* rawNormalData = (XMBYTEN4*)GetDataFromIBuffer(m_surfaceMesh->VertexNormals->Data);
 	UINT16* rawIndexData = (UINT16*)GetDataFromIBuffer(m_surfaceMesh->TriangleIndices->Data);
 	float3 vertexScale = m_surfaceMesh->VertexPositionScale;
 	
-	for (int index = 0; index < newMesh.vertCount; ++index) {
+	for (int index = 0; index < m_localMesh.vertCount; ++index) {
 		// read the current position as an XMSHORTN4.
 		XMSHORTN4 currentPos = XMSHORTN4(rawVertexData[index]);
 		XMFLOAT4 vals;
@@ -372,9 +349,9 @@ MeshData SurfaceMesh::ConstructMeshData() {
 		// do we?
 		float4 downScaledPos = float4(scaledPos.x, scaledPos.y, scaledPos.z, scaledPos.w);
 
-		newMesh.verts[index].x = downScaledPos.x;
-		newMesh.verts[index].y = downScaledPos.y;
-		newMesh.verts[index].z = downScaledPos.z;
+		m_localMesh.verts[index].x = downScaledPos.x;
+		m_localMesh.verts[index].y = downScaledPos.y;
+		m_localMesh.verts[index].z = downScaledPos.z;
 
 		// now do the same for the normal.
 		XMBYTEN4 currentNormal = XMBYTEN4(rawNormalData[index]);
@@ -382,16 +359,35 @@ MeshData SurfaceMesh::ConstructMeshData() {
 		XMVECTOR norm = XMLoadByteN4(&currentNormal);
 		XMStoreFloat4(&norms, norm);
 		// No need to downscale. Does nothing.
-		newMesh.normals[index].x = norms.x;
-		newMesh.normals[index].y = norms.y;
-		newMesh.normals[index].z = norms.z;
+		m_localMesh.normals[index].x = norms.x;
+		m_localMesh.normals[index].y = norms.y;
+		m_localMesh.normals[index].z = norms.z;
 	}
 
-	for (int index = 0; index < newMesh.indexCount; ++index) {
-		newMesh.indices[index] = rawIndexData[index];
+	for (int index = 0; index < m_localMesh.indexCount; ++index) {
+		m_localMesh.indices[index] = rawIndexData[index];
 	}
 
-	newMesh.transform = XMFloat4x4Identity;
+	// Get the transform to the current reference frame
+	auto tryTransform = m_surfaceMesh->CoordinateSystem->TryGetTransformTo(baseCoordinateSystem);
+	XMMATRIX transform;
+	if (!tryTransform) {
+		// If the transform can be acquired, this spatial mesh is valid right now and
+		// we have the information we need to draw it this frame.
+		transform = XMLoadFloat4x4(&tryTransform->Value);
 
-	return newMesh;
+		// save the transform to the local MeshData object as well.
+		XMStoreFloat4x4(&m_localMesh.transform, transform);
+	} else {
+		// If the transform is not acquired, the spatial mesh is not valid right now
+		// because its location cannot be correlated to the current space.
+		m_localMesh.transform = XMFloat4x4Identity;
+	}
+}
+
+vector<BoundedPlane> SurfaceMesh::GetPlanes(SpatialCoordinateSystem^ baseCoordinateSystem) {
+	ClearLocalMesh();
+	ConstructLocalMesh(baseCoordinateSystem);
+
+	return FindPlanes(1, &m_localMesh, 5.0f);
 }

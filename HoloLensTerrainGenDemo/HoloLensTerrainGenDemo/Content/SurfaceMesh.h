@@ -55,19 +55,16 @@ namespace HoloLensTerrainGenDemo
 		void SetIsActive(const bool& isActive) { m_isActive = isActive; }
 		void SetColorFadeTimer(const float& duration) { m_colorFadeTimeout = duration; m_colorFadeTimer = 0.f; }
 
-
+		std::vector<PlaneFinding::BoundedPlane> GetPlanes(Windows::Perception::Spatial::SpatialCoordinateSystem^ baseCoordinateSystem);
 	private:
 		void SwapVertexBuffers();
 		void CreateDirectXBuffer(ID3D11Device* device, D3D11_BIND_FLAG binding,	Windows::Storage::Streams::IBuffer^ buffer,	ID3D11Buffer** target);
-
-		// Deletes data stored in m_localMesh and recreates it.
-		void UpdateLocalMesh();
 
 		// Deletes m_localMesh.
 		void ClearLocalMesh();
 
 		// Return a MeshData object from the Raw data buffers.
-		PlaneFinding::MeshData ConstructMeshData();
+		void ConstructLocalMesh(Windows::Perception::Spatial::SpatialCoordinateSystem^ baseCoordinateSystem);
 
 		Windows::Perception::Spatial::Surfaces::SpatialSurfaceMesh^ m_surfaceMesh = nullptr;
 
