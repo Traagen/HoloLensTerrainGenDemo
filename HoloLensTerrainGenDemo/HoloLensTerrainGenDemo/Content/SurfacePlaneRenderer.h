@@ -9,7 +9,9 @@ namespace HoloLensTerrainGenDemo {
 		SurfacePlaneRenderer(const std::shared_ptr<DX::DeviceResources>& deviceResources);
 		~SurfacePlaneRenderer();
 
-		void UpdatePlanes(std::vector<PlaneFinding::BoundedPlane> newList);
+		void UpdatePlanes(std::vector<PlaneFinding::BoundedPlane> newList, Windows::Perception::Spatial::SpatialCoordinateSystem^ cs);
+		void Update(Windows::Perception::Spatial::SpatialCoordinateSystem^ baseCoordinateSystem);
+		void Render();
 
 		void CreateVertexResources();
 		void CreateDeviceDependentResources();
@@ -34,6 +36,9 @@ namespace HoloLensTerrainGenDemo {
 		// Rasterizer states
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_defaultRasterizerState;
 
+		// A way to lock map access.
+		std::mutex m_planeListLock;
+
 		std::vector<PlaneFinding::BoundedPlane>	m_planeList;
 
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_constantBuffer;
@@ -41,7 +46,8 @@ namespace HoloLensTerrainGenDemo {
 
 		ModelConstantBuffer m_constantBufferData;
 
-		bool m_createdConstantBuffer = false;
-		bool m_loadingComplete = false;
+		Windows::Perception::Spatial::SpatialCoordinateSystem^ m_coordinateSystem;
+
+		bool m_shadersReady = false;
 	};
 };

@@ -94,6 +94,9 @@
     <ClCompile Include="Content\SurfacePlaneRenderer.cpp">
       <Filter>Content</Filter>
     </ClCompile>
+    <ClCompile Include="Common\MathFunctions.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -142,11 +145,11 @@
     <ClInclude Include="Content\GUIManager.h">
       <Filter>Content</Filter>
     </ClInclude>
-    <ClInclude Include="Common\MathFunctions.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="Content\SurfacePlaneRenderer.h">
       <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\MathFunctions.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

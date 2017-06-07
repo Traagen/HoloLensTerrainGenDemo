@@ -304,10 +304,12 @@ namespace PlaneFinding
         if (dotGravity > dotProductThreshold)
         {
             vNormal = vUp;
+			plane->surface = FLOOR;
         }
         else if (dotGravity < -dotProductThreshold)
         {
             vNormal = -vUp;
+			plane->surface = CEILING;
         }
         else
         {
@@ -318,10 +320,12 @@ namespace PlaneFinding
             {
                 vNormal = XMVector3Normalize(vNormalProjectedPerpendicularToGravity);
                 isGravityAligned = true;
+				plane->surface = WALL;
             }
             else
             {
                 // plane should not be snapped, so exit without modifying plane/tangent
+				plane->surface = UNKNOWN;
                 return false;
             }
         }

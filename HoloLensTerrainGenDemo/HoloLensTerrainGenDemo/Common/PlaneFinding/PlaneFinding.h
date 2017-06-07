@@ -17,25 +17,25 @@ namespace PlaneFinding
         INT32* indices;
     };
 
-    struct Plane
-    {
-        DirectX::XMFLOAT3 normal;
-        FLOAT d;
+	enum SurfaceType { WALL, CEILING, FLOOR, UNKNOWN };
 
-        Plane() {}
-        Plane(const DirectX::XMFLOAT3& normal, FLOAT d) : normal(normal), d(d) {}
-        Plane(const DirectX::XMVECTOR& vec) { StoreVector(vec); }
+	struct Plane {
+		DirectX::XMFLOAT3 normal;
+		FLOAT d;
+		SurfaceType surface;
 
-        void StoreVector(const DirectX::XMVECTOR& vec)
-        {
-            XMStoreFloat4(reinterpret_cast<DirectX::XMFLOAT4*>(this), vec);
-        }
+		Plane() {}
+		Plane(const DirectX::XMFLOAT3& normal, FLOAT d) : normal(normal), d(d) {}
+		Plane(const DirectX::XMVECTOR& vec) { StoreVector(vec); }
 
-        const DirectX::XMVECTOR AsVector() const
-        {
-            return XMLoadFloat4(reinterpret_cast<const DirectX::XMFLOAT4*>(this));
-        }
-    };
+		void StoreVector(const DirectX::XMVECTOR& vec) {
+			XMStoreFloat4(reinterpret_cast<DirectX::XMFLOAT4*>(this), vec);
+		}
+
+		const DirectX::XMVECTOR AsVector() const {
+			return XMLoadFloat4(reinterpret_cast<const DirectX::XMFLOAT4*>(this));
+		}
+	};
 
     struct BoundedPlane
     {

@@ -185,31 +185,31 @@ namespace PlaneFinding
                 }
 
                 // If the total area is big enough, then create a merged plane for this clique
-                if (totalArea > minArea)
-                {
-                    averageCenter /= totalArea;
-                    averageNormal = XMVector3Normalize(averageNormal);
-                    XMVECTOR averagePlane = XMPlaneFromPointNormal(averageCenter, averageNormal);
-                    bool isGravityAligned = false;
+				if (totalArea > minArea) {
+					averageCenter /= totalArea;
+					averageNormal = XMVector3Normalize(averageNormal);
+					XMVECTOR averagePlane = XMPlaneFromPointNormal(averageCenter, averageNormal);
+					bool isGravityAligned = false;
+					SurfaceType st = UNKNOWN;
 
-                    if (snapToGravityThreshold != 0.0f)
-                    {
-                        Plane plane = Plane(averagePlane);
-                        XMFLOAT3 center;
+					if (snapToGravityThreshold != 0.0f) {
+						Plane plane = Plane(averagePlane);
+						XMFLOAT3 center;
 
-                        XMStoreFloat3(&center, averageCenter);
+						XMStoreFloat3(&center, averageCenter);
 
-                        isGravityAligned = SnapToGravity(&plane, nullptr, center, snapToGravityThreshold, cUpDirection);
+						isGravityAligned = SnapToGravity(&plane, nullptr, center, snapToGravityThreshold, cUpDirection);
 
-                        averagePlane = plane.AsVector();
-                    }
+						averagePlane = plane.AsVector();
+						st = plane.surface;
+					}
 
-                    Plane plane = Plane(averagePlane);
+					Plane plane = Plane(averagePlane);
+					plane.surface = st;
+					BoundingOrientedBox bounds = GetTightBounds(boundVerts, averagePlane, isGravityAligned);
 
-                    BoundingOrientedBox bounds = GetTightBounds(boundVerts, averagePlane, isGravityAligned);
-
-                    planes.push_back({ plane, bounds, totalArea }); // add all our aggregated information for this clique to the surface observer plane, then return it
-                }
+					planes.push_back({ plane, bounds, totalArea }); // add all our aggregated information for this clique to the surface observer plane, then return it
+				}
             }
         }
 

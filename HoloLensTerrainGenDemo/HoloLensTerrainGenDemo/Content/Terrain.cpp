@@ -11,7 +11,6 @@ using namespace Windows::Foundation::Numerics;
 using namespace Windows::UI::Input::Spatial;
 using namespace Windows::Perception::Spatial;
 using namespace std::placeholders;
-using namespace MathFunctions;
 
 // provide h and w in centimeters.
 // res is number of triangle edges per centimeter.
@@ -61,7 +60,7 @@ void Terrain::InitializeHeightmap() {
 		IterateFaultFormation(5, 0.002f);
 	}
 	for (int i = 0; i < 20; ++i) {
-		FIRFilter(0.2f);
+		IIRFilter(0.2f);
 	}*/
 }
 
@@ -78,7 +77,7 @@ void Terrain::ResetHeightMap() {
 
 // Basic Fault Formation Algorithm
 // FIR erosion filter
-void Terrain::FIRFilter(float filter) {
+void Terrain::IIRFilter(float filter) {
 	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
 	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
 	float prev;
@@ -407,7 +406,7 @@ void Terrain::Update(const DX::StepTimer& timer, SpatialCoordinateSystem^ coordi
 	// Update the terrain generator.
 	if (m_iIter < 500) {
 		IterateFaultFormation(5, 0.002f);
-		FIRFilter(0.1f);
+		IIRFilter(0.1f);
 
 		D3D11_MAPPED_SUBRESOURCE mappedTex = { 0 };
 		DX::ThrowIfFailed(context->Map(m_hmTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedTex));
@@ -641,7 +640,7 @@ bool Terrain::CaptureInteraction(SpatialInteraction^ interaction) {
 	auto look = head->ForwardDirection;
 
 	// calculate AABB for the terrain.
-	AABB vol;
+	MathUtil::AABB vol;
 	vol.max.x = m_position.x + m_width;
 	vol.max.y = m_position.y + FindMaxHeight();
 	vol.max.z = m_position.z + m_height;
@@ -650,7 +649,7 @@ bool Terrain::CaptureInteraction(SpatialInteraction^ interaction) {
 	vol.min.z = m_position.z;
 
 
-	if (RayAABBIntersect(position, look, vol)) {
+	if (MathUtil::RayAABBIntersect(position, look, vol)) {
 		// if so, handle the interaction and return true.
 		m_gestureRecognizer->CaptureInteraction(interaction);
 		return true;

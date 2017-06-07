@@ -227,15 +227,8 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 		}
 
 		m_meshRenderer->Update(m_timer, currentCoordinateSystem);
+		m_planeRenderer->Update(currentCoordinateSystem);
     });
-
-	// asynchronously attempt to get a list of planes.
-	m_planeReadTimer.Tick([&]() {
-		auto getPlanesTask = create_task([this, currentCoordinateSystem] {
-			auto planes = m_meshRenderer->GetPlanes(currentCoordinateSystem);
-			m_planeRenderer->UpdatePlanes(planes);
-		});
-	});
 
 	// We complete the frame update by using information about our content positioning
     // to set the focus point.
@@ -265,7 +258,7 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 // Renders the current frame to each holographic camera, according to the
 // current application and spatial positioning state. Returns true if the
 // frame was rendered to at least one camera.
-bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::HolographicFrame^ holographicFrame) {
+bool HoloLensTerrainGenDemoMain::Render(HolographicFrame^ holographicFrame) {
     // Don't try to render anything before the first Update.
     if (m_timer.GetFrameCount() == 0)
     {
@@ -338,6 +331,8 @@ bool HoloLensTerrainGenDemoMain::Render(Windows::Graphics::Holographic::Holograp
 			if (cameraActive) {
 				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), m_guiManager->GetRenderWireframe(), !m_guiManager->GetRenderSurfaces());
 
+				m_planeRenderer->Render();
+
 				// Draw the sample hologram.
 				if (m_terrain) {
 					m_terrain->Render();
@@ -377,6 +372,7 @@ void HoloLensTerrainGenDemoMain::OnDeviceLost() {
 	}
 
 	m_meshRenderer->ReleaseDeviceDependentResources();
+	m_planeRenderer->ReleaseDeviceDependentResources();
 }
 
 // Notifies classes that use Direct3D device resources that the device resources
@@ -387,6 +383,7 @@ void HoloLensTerrainGenDemoMain::OnDeviceRestored() {
 	}
 
 	m_meshRenderer->CreateDeviceDependentResources();
+	m_planeRenderer->CreateDeviceDependentResources();
 }
 
 void HoloLensTerrainGenDemoMain::OnLocatabilityChanged(SpatialLocator^ sender, Object^ args) {
@@ -501,6 +498,22 @@ void HoloLensTerrainGenDemoMain::OnSurfacesChanged(SpatialSurfaceObserver^ sende
 	// The system can including them in the collection again later, in which case
 	// they will no longer be hidden.
 	m_meshRenderer->HideInactiveMeshes(surfaceCollection);
+
+	// The HolographicFrame has information that the app needs in order
+	// to update and render the current frame. The app begins each new
+	// frame by calling CreateNextFrame.
+	HolographicFrame^ holographicFrame = m_holographicSpace->CreateNextFrame();
+
+	// Get a prediction of where holographic cameras will be when this frame
+	// is presented.
+	HolographicFramePrediction^ prediction = holographicFrame->CurrentPrediction;
+	SpatialCoordinateSystem^ currentCoordinateSystem = m_referenceFrame->GetStationaryCoordinateSystemAtTimestamp(prediction->Timestamp);
+	// use it to find all surface planes and pass them to the planeRenderer.
+	// this is quite slow, so it is done asynchronously.
+	auto getPlanesTask = create_task([this, currentCoordinateSystem] {
+		auto planes = m_meshRenderer->GetPlanes(currentCoordinateSystem);
+		m_planeRenderer->UpdatePlanes(planes, currentCoordinateSystem);
+	});
 }
 
 void HoloLensTerrainGenDemoMain::OnInteractionDetected(SpatialInteractionManager^ sender, SpatialInteractionDetectedEventArgs^ args) {

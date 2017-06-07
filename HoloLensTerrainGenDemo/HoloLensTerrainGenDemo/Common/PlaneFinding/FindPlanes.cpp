@@ -25,7 +25,7 @@ namespace PlaneFinding
                                              // constants for filtering how many potential planes are considered
     const UINT32 cMaxPlanesPerSurface = 30; // constraints on how many planes we can find in a single volume
     const UINT32 cMinVertsPerPlane = 10; // minimum vertices required for a planar region to count as a plane
-    const float cMinimumPlaneSize = 0.125f; // threshold for how large a plane must be when projected onto the tangent/cotangent vectors.  Measured as standard deviation of vertices, in meters.
+	const float cMinimumPlaneSize = 0.001; // 0.125f; // threshold for how large a plane must be when projected onto the tangent/cotangent vectors.  Measured as standard deviation of vertices, in meters.
 
                                             // constants used for bucketing vertices to planes
     const float cMaxDistanceFromPlane = 0.125f; // max distance from a plane equation for a vetex to be considered part of the plane, in meters

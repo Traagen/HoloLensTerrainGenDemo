@@ -37,7 +37,7 @@ namespace HoloLensTerrainGenDemo {
 		// Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
 		// depth of 1 is a leaf node.
 		void BuildBSPTree(BSPNode* current, unsigned int depth);
-		void FIRFilter(float filter);
+		void IIRFilter(float filter);
 		// Calculates a distance value for point p from the edge of the height map.
 		// Calculation is calculated as Dx * Dy
 		// Dx = 1 - (|w/2 - px| / (w/2))

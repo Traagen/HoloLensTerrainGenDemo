@@ -414,8 +414,7 @@ vector<PlaneFinding::BoundedPlane> RealtimeSurfaceMeshRenderer::GetPlanes(Spatia
 	}
 
 	// attempt to merge the planes created by the collection to create a smaller set of larger planes.
-	//auto mergedPlanes = PlaneFinding::MergePlanes(allPlanes.size(), allPlanes.data(), 0.0f, 5.0f);
+	auto mergedPlanes = PlaneFinding::MergePlanes(allPlanes.size(), allPlanes.data(), 0.0f, 5.0f);
 
-	//return mergedPlanes;
-	return allPlanes;
+	return mergedPlanes;
 }

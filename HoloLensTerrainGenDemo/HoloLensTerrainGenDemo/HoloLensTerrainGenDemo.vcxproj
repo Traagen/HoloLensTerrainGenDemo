@@ -117,6 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AppView.cpp" />
+    <ClCompile Include="Common\MathFunctions.cpp" />
     <ClCompile Include="Common\PlaneFinding\FindPlanes.cpp" />
     <ClCompile Include="Common\PlaneFinding\HalfEdgeMesh.cpp" />
     <ClCompile Include="Common\PlaneFinding\MergePlanes.cpp" />

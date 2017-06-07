@@ -313,7 +313,7 @@ void SurfaceMesh::ClearLocalMesh() {
 }
 
 // Return a MeshData object from the Raw data buffers.
-void SurfaceMesh::ConstructLocalMesh(Windows::Perception::Spatial::SpatialCoordinateSystem^ baseCoordinateSystem) {
+void SurfaceMesh::ConstructLocalMesh(SpatialCoordinateSystem^ baseCoordinateSystem) {
 	// we configured RealtimeSurfaceMeshRenderer to ensure that the data
 	// we are receiving is in the correct format.
 	// Vertex Positions: R16G16B16A16IntNormalized
@@ -333,7 +333,7 @@ void SurfaceMesh::ConstructLocalMesh(Windows::Perception::Spatial::SpatialCoordi
 	
 	for (int index = 0; index < m_localMesh.vertCount; ++index) {
 		// read the current position as an XMSHORTN4.
-		XMSHORTN4 currentPos = XMSHORTN4(rawVertexData[index]);
+		XMSHORTN4 currentPos = rawVertexData[index];
 		XMFLOAT4 vals;
 
 		// XMVECTOR knows how to convert XMSHORTN4 to actual floating point coordinates.
@@ -342,52 +342,54 @@ void SurfaceMesh::ConstructLocalMesh(Windows::Perception::Spatial::SpatialCoordi
 		// Store that into an XMFLOAT4 so we can read the values.
 		XMStoreFloat4(&vals, vec);
 
-		// Scale by the vertex scale.
-		XMFLOAT4 scaledPos = XMFLOAT4(vals.x * vertexScale.x, vals.y * vertexScale.y, vals.z * vertexScale.z, vals.w);
-
-		// Then we need to down scale the vector since it will be rescaled when rendering (ie divide by w).
-		// do we?
-		float4 downScaledPos = float4(scaledPos.x, scaledPos.y, scaledPos.z, scaledPos.w);
-
-		m_localMesh.verts[index].x = downScaledPos.x;
-		m_localMesh.verts[index].y = downScaledPos.y;
-		m_localMesh.verts[index].z = downScaledPos.z;
+		m_localMesh.verts[index] = XMFLOAT3(vals.x, vals.y, vals.z);
 
 		// now do the same for the normal.
-		XMBYTEN4 currentNormal = XMBYTEN4(rawNormalData[index]);
+		XMBYTEN4 currentNormal = rawNormalData[index];
 		XMFLOAT4 norms;
 		XMVECTOR norm = XMLoadByteN4(&currentNormal);
 		XMStoreFloat4(&norms, norm);
-		// No need to downscale. Does nothing.
-		m_localMesh.normals[index].x = norms.x;
-		m_localMesh.normals[index].y = norms.y;
-		m_localMesh.normals[index].z = norms.z;
+
+		m_localMesh.normals[index] = XMFLOAT3(norms.x, norms.y, norms.z);
 	}
 
 	for (int index = 0; index < m_localMesh.indexCount; ++index) {
 		m_localMesh.indices[index] = rawIndexData[index];
 	}
 
-	// Get the transform to the current reference frame
+	// Get the transform to the current reference frame (ie model to world)
 	auto tryTransform = m_surfaceMesh->CoordinateSystem->TryGetTransformTo(baseCoordinateSystem);
+	
 	XMMATRIX transform;
-	if (!tryTransform) {
+	if (tryTransform) {
 		// If the transform can be acquired, this spatial mesh is valid right now and
 		// we have the information we need to draw it this frame.
 		transform = XMLoadFloat4x4(&tryTransform->Value);
-
-		// save the transform to the local MeshData object as well.
-		XMStoreFloat4x4(&m_localMesh.transform, transform);
 	} else {
 		// If the transform is not acquired, the spatial mesh is not valid right now
 		// because its location cannot be correlated to the current space.
-		m_localMesh.transform = XMFloat4x4Identity;
+		// for now, I'm just setting the transform to the identity matrix. We really should never 
+		// get here anyway because the same check happens on update and
+		// the surface will be set inactive. We check in GetPlanes()
+		// before calling this method whether the surface is active.
+		transform = XMLoadFloat4x4(&XMFloat4x4Identity);
 	}
+
+	// Add a scaling factor to our transform to go from mesh to world.
+	XMMATRIX scaleTransform = XMMatrixScalingFromVector(XMLoadFloat3(&vertexScale));
+
+	// save the transform to the local MeshData object.
+	XMStoreFloat4x4(&m_localMesh.transform, scaleTransform * transform);
 }
 
 vector<BoundedPlane> SurfaceMesh::GetPlanes(SpatialCoordinateSystem^ baseCoordinateSystem) {
-	ClearLocalMesh();
-	ConstructLocalMesh(baseCoordinateSystem);
+	if (m_isActive) {
+		ClearLocalMesh();
+		ConstructLocalMesh(baseCoordinateSystem);
 
-	return FindPlanes(1, &m_localMesh, 5.0f);
+		return FindPlanes(1, &m_localMesh, 5.0f);
+	}
+
+	// else, return an empty vector.
+	return vector<BoundedPlane>();
 }
