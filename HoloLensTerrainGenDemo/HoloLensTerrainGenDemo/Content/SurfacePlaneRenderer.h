@@ -17,8 +17,18 @@ namespace HoloLensTerrainGenDemo {
 		void CreateDeviceDependentResources();
 		void ReleaseDeviceDependentResources();
 
+		bool CaptureInteraction(Windows::UI::Input::Spatial::SpatialInteraction^ interaction);
+
+		Windows::Perception::Spatial::SpatialAnchor^ GetAnchor();
+		Windows::Foundation::Numerics::float2 GetDimensions();
+		bool WasTappedRecently() { return m_WasTapped;  }
+
 	private:
 		void CreateShaders();
+
+		// Event handler for gesture recognition.
+		void OnTap(Windows::UI::Input::Spatial::SpatialGestureRecognizer^ sender,
+			Windows::UI::Input::Spatial::SpatialTappedEventArgs^ args);
 
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources> m_deviceResources;
@@ -45,9 +55,20 @@ namespace HoloLensTerrainGenDemo {
 		Microsoft::WRL::ComPtr<ID3D11Buffer> m_vertexBuffer;
 
 		ModelConstantBuffer m_constantBufferData;
+		DirectX::XMFLOAT4X4 m_modelToWorld;
 
 		Windows::Perception::Spatial::SpatialCoordinateSystem^ m_coordinateSystem;
 
 		bool m_shadersReady = false;
+
+		// Recognizes valid gestures passed to the Terrain object.
+		Windows::UI::Input::Spatial::SpatialGestureRecognizer^ m_gestureRecognizer;
+
+		// event token
+		Windows::Foundation::EventRegistrationToken			m_tapGestureEventToken;
+
+		// defines the last intersected plane
+		int m_intersectedPlane = -1;
+		bool m_WasTapped = false;
 	};
 };

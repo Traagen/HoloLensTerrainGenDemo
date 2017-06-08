@@ -210,14 +210,6 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 		m_surfaceObserver->SetBoundingVolume(bounds);
 	}
 
-	// Check whether any surfaces have been found yet.
-	// If so, initialize the terrain.
-	if (!m_terrain) {
-		if (m_meshRenderer->FoundSurfaces()) {
-			m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.5f, 0.5f, 4, SpatialAnchor::TryCreateRelativeTo(currentCoordinateSystem));
-		}
-	}
-
     m_timer.Tick([&] () {
         // Put time-based updates here. By default this code will run once per frame,
         // but if you change the StepTimer to use a fixed time step this code will
@@ -229,6 +221,15 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 		m_meshRenderer->Update(m_timer, currentCoordinateSystem);
 		m_planeRenderer->Update(currentCoordinateSystem);
     });
+
+	
+	// if we haven't generated a terrain yet, check if we have recently
+	// tapped on a surface plane;
+	if (!m_terrain && m_planeRenderer->WasTappedRecently()) {
+		auto anchor = m_planeRenderer->GetAnchor();
+		auto dimensions = m_planeRenderer->GetDimensions();
+		m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.6f, 0.6f, 4, anchor);
+	}
 
 	// We complete the frame update by using information about our content positioning
     // to set the focus point.
@@ -330,12 +331,13 @@ bool HoloLensTerrainGenDemoMain::Render(HolographicFrame^ holographicFrame) {
 			// Only render world-locked content when positional tracking is active.
 			if (cameraActive) {
 				m_meshRenderer->Render(pCameraResources->IsRenderingStereoscopic(), m_guiManager->GetRenderWireframe(), !m_guiManager->GetRenderSurfaces());
-
-				m_planeRenderer->Render();
-
+				
 				// Draw the sample hologram.
 				if (m_terrain) {
 					m_terrain->Render();
+				}
+				else {
+					m_planeRenderer->Render();
 				}
 			}
 
@@ -517,9 +519,16 @@ void HoloLensTerrainGenDemoMain::OnSurfacesChanged(SpatialSurfaceObserver^ sende
 }
 
 void HoloLensTerrainGenDemoMain::OnInteractionDetected(SpatialInteractionManager^ sender, SpatialInteractionDetectedEventArgs^ args) {
-	// if the terrain does not exist, or the interaction does not apply to the terrain,
-	// then send the interaction to the gui manager.
-	if (!m_terrain || !m_terrain->CaptureInteraction(args->Interaction)) {
-		m_guiManager->CaptureInteraction(args->Interaction);
+	// if the terrain does not exist, check whether the interaction was with a surface plane.
+	// if the terrain does exist, check whether the interaction was with the terrain.
+	// in either case, if the interaction was not with the object, check it with the guiManager.
+	if (!m_terrain) {
+		if (!m_planeRenderer->CaptureInteraction(args->Interaction)) {
+			m_guiManager->CaptureInteraction(args->Interaction);
+		}
+	} else {
+		if (!m_terrain->CaptureInteraction(args->Interaction)) {
+			m_guiManager->CaptureInteraction(args->Interaction);
+		}
 	}
 }

@@ -12,7 +12,7 @@ using namespace Windows::UI::Input::Spatial;
 using namespace Windows::Perception::Spatial;
 using namespace std::placeholders;
 
-// provide h and w in centimeters.
+// provide h and w in meters.
 // res is number of triangle edges per centimeter.
 Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, SpatialAnchor^ anchor) :
 	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), 
@@ -20,7 +20,7 @@ Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, fl
 	m_heightmap = nullptr;
 	InitializeHeightmap();
 
-	SetPosition(float3(-w / 2.0f, -0.2f, -h / 2.0f));
+	SetPosition(float3(-w / 2.0f, 0.0f, -h / 2.0f));
 
 	// Set up a general gesture recognizer for input.
 	m_gestureRecognizer = ref new SpatialGestureRecognizer(SpatialGestureSettings::Tap);

@@ -8,17 +8,32 @@ using namespace HoloLensTerrainGenDemo;
 using namespace DirectX;
 using namespace Concurrency;
 using namespace Windows::Perception::Spatial;
+using namespace Windows::UI::Input::Spatial;
 using namespace PlaneFinding;
+using namespace std::placeholders;
 
 SurfacePlaneRenderer::SurfacePlaneRenderer(const std::shared_ptr<DX::DeviceResources>& deviceResources) :
 	m_deviceResources(deviceResources) {
 	m_planeList.clear();
 
 	CreateDeviceDependentResources();
+
+	// Set up a general gesture recognizer for input.
+	m_gestureRecognizer = ref new SpatialGestureRecognizer(SpatialGestureSettings::Tap);
+
+	m_tapGestureEventToken =
+		m_gestureRecognizer->Tapped +=
+		ref new Windows::Foundation::TypedEventHandler<SpatialGestureRecognizer^, SpatialTappedEventArgs^>(
+			std::bind(&SurfacePlaneRenderer::OnTap, this, _1, _2)
+			);
 }
 
 SurfacePlaneRenderer::~SurfacePlaneRenderer() {
 	ReleaseDeviceDependentResources();
+
+	if (m_gestureRecognizer) {
+		m_gestureRecognizer->Tapped -= m_tapGestureEventToken;
+	}
 }
 
 void SurfacePlaneRenderer::CreateVertexResources() {
@@ -26,6 +41,16 @@ void SurfacePlaneRenderer::CreateVertexResources() {
 		// No planes to draw.
 		return;
 	}
+
+	// define the unit space vertices of the plane we are rendering.
+	static const XMVECTOR verts[6] = {
+		{ -1.0f, -1.0f, 0.0f, 0.0f },
+		{ -1.0f,  1.0f, 0.0f, 0.0f },
+		{ 1.0f, -1.0f, 0.0f, 0.0f },
+		{ -1.0f,  1.0f, 0.0f, 0.0f },
+		{ 1.0f,  1.0f, 0.0f, 0.0f },
+		{ 1.0f, -1.0f, 0.0f, 0.0f }
+	};
 
 	// resources are created off-thread, so that they don't affect rendering latency.
 	auto taskOptions = Concurrency::task_options();
@@ -37,19 +62,7 @@ void SurfacePlaneRenderer::CreateVertexResources() {
 		m_vertexBuffer.Reset();
 
 		// Build a vertex buffer containing 6 vertices (2 triangles) for each plane, representing the quad of the bounded plane.
-		int numPlanes = m_planeList.size();
-		int numVerts = numPlanes * 6;
 		std::vector<XMFLOAT3> vertexList;
-
-		// define the unit space vertices of the plane we are rendering.
-		static const XMVECTOR verts[6] = {
-			{ -1.0f, -1.0f, 0.0f, 0.0f },
-			{ -1.0f,  1.0f, 0.0f, 0.0f },
-			{  1.0f, -1.0f, 0.0f, 0.0f },
-			{ -1.0f,  1.0f, 0.0f, 0.0f },
-			{  1.0f,  1.0f, 0.0f, 0.0f },
-			{  1.0f, -1.0f, 0.0f, 0.0f }
-		};
 
 		for (auto p : m_planeList) {
 			// for each plane in our list, build a quad and add the vertices to our verts list.
@@ -62,12 +75,10 @@ void SurfacePlaneRenderer::CreateVertexResources() {
 			XMMATRIX world = XMMatrixRotationQuaternion(XMLoadFloat4(&p.bounds.Orientation));
 			XMMATRIX scale = XMMatrixScaling(extents.x, extents.y, extents.z);
 			XMMATRIX translate = XMMatrixTranslation(center.x, center.y, center.z);
+			XMMATRIX transform = XMMatrixMultiply(scale, world);
+			transform = XMMatrixMultiply(transform, translate);
 
 			for (auto i = 0; i < 6; ++i) {
-				XMMATRIX transform = XMMatrixMultiply(scale, world);
-
-				transform = XMMatrixMultiply(transform, translate);
-
 				XMVECTOR v = XMVector3Transform(verts[i], transform);
 				XMFLOAT3 vec;
 				XMStoreFloat3(&vec, v);
@@ -251,10 +262,141 @@ void SurfacePlaneRenderer::Update(SpatialCoordinateSystem^ baseCoordinateSystem)
 	}
 
 	XMStoreFloat4x4(&m_constantBufferData.modelToWorld, XMMatrixTranspose(transform));
+	XMStoreFloat4x4(&m_modelToWorld, transform);
 
 	// Use the D3D device context to update Direct3D device-based resources.
 	const auto context = m_deviceResources->GetD3DDeviceContext();
 
 	// Update the model transform buffer for the hologram.
 	context->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &m_constantBufferData, 0, 0);
+}
+
+bool SurfacePlaneRenderer::CaptureInteraction(SpatialInteraction^ interaction) {
+	if (m_planeList.size() < 1) {
+		// No planes to intersect with.
+		return false;
+	}
+
+	// define the unit space vertices of the plane we are testing.
+	static const XMVECTOR verts[6] = {
+		{ -1.0f, -1.0f, 0.0f, 0.0f },
+		{ -1.0f,  1.0f, 0.0f, 0.0f },
+		{ 1.0f, -1.0f, 0.0f, 0.0f },
+		{ -1.0f,  1.0f, 0.0f, 0.0f },
+		{ 1.0f,  1.0f, 0.0f, 0.0f },
+		{ 1.0f, -1.0f, 0.0f, 0.0f }
+	};
+
+	// Get the user's gaze
+	auto gaze = interaction->SourceState->TryGetPointerPose(m_coordinateSystem);
+	auto head = gaze->Head;
+	auto position = head->Position;
+	auto look = head->ForwardDirection;
+
+	// For each surface plane quad, check if the gaze intersects it.
+	// track the closest such intersection.
+	int index = -1; // index of closest intersected plane.
+	float dist = D3D11_FLOAT32_MAX; // initial distance value.
+	int i = 0;
+	for (auto p : m_planeList) {
+		// build the matrices to properly orient the quad.
+		auto center = p.bounds.Center;
+		auto extents = p.bounds.Extents;
+
+		// transformation matrices to go from unit space to world space.
+		XMMATRIX modelToWorld = XMLoadFloat4x4(&m_modelToWorld);
+		XMMATRIX world = XMMatrixRotationQuaternion(XMLoadFloat4(&p.bounds.Orientation));
+		world = XMMatrixMultiply(modelToWorld, world);
+		XMMATRIX scale = XMMatrixScaling(extents.x, extents.y, extents.z);
+		XMMATRIX translate = XMMatrixTranslation(center.x, center.y, center.z);
+		XMMATRIX transform = XMMatrixMultiply(scale, world);
+		transform = XMMatrixMultiply(transform, translate);
+		// add in the model to world transform so that the quad and gaze are in the same coordinate system.
+
+
+		// generate oriented quad.
+		std::vector<XMFLOAT3> vertexList;
+		for (int j = 0; j < 6; ++j) {
+			XMVECTOR v = XMVector3Transform(verts[j], transform);
+			XMFLOAT3 vec;
+			XMStoreFloat3(&vec, v);
+			vertexList.push_back(vec);
+		}
+
+		// perform intersection test.
+		// if intersection test returns an intersection, check
+		// that this is the closest intersection in case the gaze intersects multiple planes.
+		// save the index of the closest plane so we can create the correct anchor onTap.
+
+		// perform 2 ray-triangle intersection tests and save the lowest value above 0.
+		float d = MathUtil::RayTriangleIntersect(position, look, 
+			float3(vertexList[0].x, vertexList[0].y, vertexList[0].z), 
+			float3(vertexList[1].x, vertexList[1].y, vertexList[1].z), 
+			float3(vertexList[2].x, vertexList[2].y, vertexList[2].z));
+
+		float d2 = MathUtil::RayTriangleIntersect(position, look,
+			float3(vertexList[3].x, vertexList[3].y, vertexList[3].z),
+			float3(vertexList[4].x, vertexList[4].y, vertexList[4].z),
+			float3(vertexList[5].x, vertexList[5].y, vertexList[5].z));
+
+		if (d > 0 && d < dist) {
+			dist = d;
+			index = i;
+		}
+		if (d2 > 0 && d2 < dist) {
+			dist = d2;
+			index = i;
+		}
+		
+		// next plane
+		++i;
+	}
+
+	// if we have an index > -1, then we need to handle this interaction.
+	if (index > -1) {
+		// if so, handle the interaction and return true.
+		m_intersectedPlane = index;
+
+		m_gestureRecognizer->CaptureInteraction(interaction);
+		return true;
+	}
+
+	// if it doesn't intersect, then don't handle the interaction and return false.
+	return false;
+}
+
+void SurfacePlaneRenderer::OnTap(SpatialGestureRecognizer^ sender, SpatialTappedEventArgs^ args) {
+	m_WasTapped = true;
+}
+
+SpatialAnchor^ SurfacePlaneRenderer::GetAnchor() {
+	auto plane = m_planeList[m_intersectedPlane];
+
+	// build the matrices to properly orient the quad.
+	auto center = plane.bounds.Center;
+	auto extents = plane.bounds.Extents;
+
+	// transformation matrices to go from unit space to world space.
+	XMMATRIX modelToWorld = XMLoadFloat4x4(&m_modelToWorld);
+	XMMATRIX world = XMMatrixRotationQuaternion(XMLoadFloat4(&plane.bounds.Orientation));
+	world = XMMatrixMultiply(modelToWorld, world);
+	XMMATRIX scale = XMMatrixScaling(extents.x, extents.y, extents.z);
+	XMMATRIX translate = XMMatrixTranslation(center.x, center.y, center.z);
+	XMMATRIX transform = XMMatrixMultiply(scale, world);
+	transform = XMMatrixMultiply(transform, translate);
+
+	XMVECTOR v = { 0.0f, 0.0f, -1.0f, 0.0f };
+	v = XMVector3Transform(v, transform);
+	XMFLOAT3 vec;
+	XMStoreFloat3(&vec, v);
+	return SpatialAnchor::TryCreateRelativeTo(m_coordinateSystem, float3(vec.x, vec.y, vec.z));
+}
+
+float2 SurfacePlaneRenderer::GetDimensions() {
+	auto plane = m_planeList[m_intersectedPlane];
+
+	// build the matrices to properly orient the quad.
+	auto extents = plane.bounds.Extents;
+
+	return float2(extents.x, extents.y);
 }

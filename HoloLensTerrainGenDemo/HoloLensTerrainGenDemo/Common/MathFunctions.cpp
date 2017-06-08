@@ -8,7 +8,7 @@ using namespace DirectX;
 // Checks if the supplied Ray (p + d) intersects the triangle (v0, v1, v2).
 // Returns true if so, false if not.
 // Möller–Trumbore ray-triangle intersection algorithm
-bool MathUtil::RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, float3 v2) {
+float MathUtil::RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, float3 v2) {
 	// Find vectors for two edges sharing V1
 	float3 e1 = v1 - v0;
 	float3 e2 = v2 - v0;
@@ -19,7 +19,7 @@ bool MathUtil::RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, fl
 
 	// if determinant is near zero, ray lies in plane of triangle or ray is parallel to plane of triangle
 	if (det > -EPSILON && det < EPSILON) {
-		return false;
+		return 0;
 	}
 
 	float inv_det = 1 / det;
@@ -32,7 +32,7 @@ bool MathUtil::RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, fl
 
 	if (u < 0.0f || u > 1.0f) {
 		// The intersection lies outside of the triangle
-		return false;
+		return 0;
 	}
 
 	// Calculate V parameter and test bound
@@ -41,7 +41,7 @@ bool MathUtil::RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, fl
 
 	if (v < 0.0f || u + v > 1.0f) {
 		// The intersection lies outside of the triangle
-		return false;
+		return 0;
 	}
 
 	// compute t, the intersection point along the line.
@@ -49,12 +49,12 @@ bool MathUtil::RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, fl
 
 	if (t > EPSILON) {
 		// the point of intersection happens on the ray.
-		return true;
+		return t;
 	}
 	else {
 		// the point of intersection happens on the line, but not on the ray.
 		// ie, it happens before the start of the ray, point p.
-		return false;
+		return 0;
 	}
 }
 

@@ -18,7 +18,7 @@ namespace MathUtil {
 	// Checks if the supplied Ray (p + d) intersects the triangle (v0, v1, v2).
 	// Returns true if so, false if not.
 	// Möller–Trumbore ray-triangle intersection algorithm
-	bool RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, float3 v2);
+	float RayTriangleIntersect(float3 p, float3 d, float3 v0, float3 v1, float3 v2);
 
 	// Intersect ray (p, d) with the provided AABB.
 	// uses algorithm found in Real Time Collision Detection by Christer Ericson (2005).
