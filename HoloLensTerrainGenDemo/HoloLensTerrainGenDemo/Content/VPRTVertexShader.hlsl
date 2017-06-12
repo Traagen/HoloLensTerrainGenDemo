@@ -39,7 +39,7 @@ VertexShaderOutput main(VertexShaderInput input)
 {
     VertexShaderOutput output;
     float4 pos = float4(input.pos, 1.0f);
-	pos.y = heightmap.SampleLevel(hmsampler, input.uv, 0);
+	pos.z = heightmap.SampleLevel(hmsampler, input.uv, 0);
 
     // Note which view this vertex has been sent to. Used for matrix lookup.
     // Taking the modulo of the instance ID allows geometry instancing to be used

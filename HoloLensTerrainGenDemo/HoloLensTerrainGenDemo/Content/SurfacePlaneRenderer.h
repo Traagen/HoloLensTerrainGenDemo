@@ -21,6 +21,7 @@ namespace HoloLensTerrainGenDemo {
 
 		Windows::Perception::Spatial::SpatialAnchor^ GetAnchor();
 		Windows::Foundation::Numerics::float2 GetDimensions();
+		DirectX::XMFLOAT4X4 GetOrientation();
 		bool WasTappedRecently() { return m_WasTapped;  }
 
 	private:

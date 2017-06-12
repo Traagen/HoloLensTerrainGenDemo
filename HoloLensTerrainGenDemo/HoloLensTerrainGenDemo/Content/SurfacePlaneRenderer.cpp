@@ -306,13 +306,12 @@ bool SurfacePlaneRenderer::CaptureInteraction(SpatialInteraction^ interaction) {
 		// transformation matrices to go from unit space to world space.
 		XMMATRIX modelToWorld = XMLoadFloat4x4(&m_modelToWorld);
 		XMMATRIX world = XMMatrixRotationQuaternion(XMLoadFloat4(&p.bounds.Orientation));
+		// add in the model to world transform so that the quad and gaze are in the same coordinate system.
 		world = XMMatrixMultiply(modelToWorld, world);
 		XMMATRIX scale = XMMatrixScaling(extents.x, extents.y, extents.z);
 		XMMATRIX translate = XMMatrixTranslation(center.x, center.y, center.z);
 		XMMATRIX transform = XMMatrixMultiply(scale, world);
 		transform = XMMatrixMultiply(transform, translate);
-		// add in the model to world transform so that the quad and gaze are in the same coordinate system.
-
 
 		// generate oriented quad.
 		std::vector<XMFLOAT3> vertexList;
@@ -371,25 +370,11 @@ void SurfacePlaneRenderer::OnTap(SpatialGestureRecognizer^ sender, SpatialTapped
 
 SpatialAnchor^ SurfacePlaneRenderer::GetAnchor() {
 	auto plane = m_planeList[m_intersectedPlane];
-
-	// build the matrices to properly orient the quad.
 	auto center = plane.bounds.Center;
-	auto extents = plane.bounds.Extents;
 
-	// transformation matrices to go from unit space to world space.
-	XMMATRIX modelToWorld = XMLoadFloat4x4(&m_modelToWorld);
-	XMMATRIX world = XMMatrixRotationQuaternion(XMLoadFloat4(&plane.bounds.Orientation));
-	world = XMMatrixMultiply(modelToWorld, world);
-	XMMATRIX scale = XMMatrixScaling(extents.x, extents.y, extents.z);
-	XMMATRIX translate = XMMatrixTranslation(center.x, center.y, center.z);
-	XMMATRIX transform = XMMatrixMultiply(scale, world);
-	transform = XMMatrixMultiply(transform, translate);
-
-	XMVECTOR v = { 0.0f, 0.0f, -1.0f, 0.0f };
-	v = XMVector3Transform(v, transform);
-	XMFLOAT3 vec;
-	XMStoreFloat3(&vec, v);
-	return SpatialAnchor::TryCreateRelativeTo(m_coordinateSystem, float3(vec.x, vec.y, vec.z));
+	// create the anchor at the plane's center, relative to the coordinate system extant at the time of the
+	// plane's creation.
+	return SpatialAnchor::TryCreateRelativeTo(m_coordinateSystem, float3(center.x, center.y, center.z));
 }
 
 float2 SurfacePlaneRenderer::GetDimensions() {
@@ -399,4 +384,14 @@ float2 SurfacePlaneRenderer::GetDimensions() {
 	auto extents = plane.bounds.Extents;
 
 	return float2(extents.x, extents.y);
+}
+
+XMFLOAT4X4 SurfacePlaneRenderer::GetOrientation() {
+	auto plane = m_planeList[m_intersectedPlane];
+	XMMATRIX world = XMMatrixRotationQuaternion(XMLoadFloat4(&plane.bounds.Orientation));
+
+	XMFLOAT4X4 transform;
+	XMStoreFloat4x4(&transform, world);
+
+	return transform;
 }

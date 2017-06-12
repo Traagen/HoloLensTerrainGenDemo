@@ -14,13 +14,18 @@ using namespace std::placeholders;
 
 // provide h and w in meters.
 // res is number of triangle edges per centimeter.
-Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, SpatialAnchor^ anchor) :
+Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, SpatialAnchor^ anchor, XMFLOAT4X4 orientation) :
 	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), 
-	m_anchor(anchor), m_height(h), m_width(w) {
+	m_anchor(anchor), m_height(h), m_width(w), m_orientation(orientation) {
+	// invert the z-axis of the orientation matrix because for some reason it is backwards to what we need.
+	m_orientation._31 *= -1;
+	m_orientation._32 *= -1;
+	m_orientation._33 *= -1;
+
 	m_heightmap = nullptr;
 	InitializeHeightmap();
 
-	SetPosition(float3(-w / 2.0f, 0.0f, -h / 2.0f));
+	SetPosition(float3(-w / 2.0f, -h / 2.0f, 0.0f));
 
 	// Set up a general gesture recognizer for input.
 	m_gestureRecognizer = ref new SpatialGestureRecognizer(SpatialGestureSettings::Tap);
@@ -376,6 +381,10 @@ void Terrain::Update(const DX::StepTimer& timer, SpatialCoordinateSystem^ coordi
 		// just use the identity matrix if we can't load the transform for some reason.
 		transform = XMMatrixIdentity();
 	}
+
+	// add in the orientation of the terrain.
+	XMMATRIX orientation = XMLoadFloat4x4(&m_orientation);
+	transform = orientation * transform;
 	// Get the translation matrix.
 	const XMMATRIX modelTranslation = XMMatrixTranslationFromVector(XMLoadFloat3(&m_position));
 
@@ -534,7 +543,7 @@ void Terrain::CreateDeviceDependentResources() {
 			float y = (float)i / d;
 			for (auto j = 0u; j < w; ++j) {
 				float x = (float)j / d;
-				terrainVertices.push_back({XMFLOAT3(x, 0.0f, y), XMFLOAT2((float)j / (float)w, (float)i / (float)h)});
+				terrainVertices.push_back({XMFLOAT3(x, y, 0.0f), XMFLOAT2((float)j / (float)w, (float)i / (float)h)});
 			}
 		}
 
@@ -642,8 +651,9 @@ bool Terrain::CaptureInteraction(SpatialInteraction^ interaction) {
 	// calculate AABB for the terrain.
 	MathUtil::AABB vol;
 	vol.max.x = m_position.x + m_width;
-	vol.max.y = m_position.y + FindMaxHeight();
-	vol.max.z = m_position.z + m_height;
+	vol.max.y = m_position.y + m_height;
+	vol.max.z = m_position.z + FindMaxHeight();
+
 	vol.min.x = m_position.x;
 	vol.min.y = m_position.y;
 	vol.min.z = m_position.z;

@@ -228,7 +228,8 @@ HolographicFrame^ HoloLensTerrainGenDemoMain::Update() {
 	if (!m_terrain && m_planeRenderer->WasTappedRecently()) {
 		auto anchor = m_planeRenderer->GetAnchor();
 		auto dimensions = m_planeRenderer->GetDimensions();
-		m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.6f, 0.6f, 4, anchor);
+		auto orientation = m_planeRenderer->GetOrientation();
+		m_terrain = std::make_unique<Terrain>(m_deviceResources, 0.6f, 0.6f, 4, anchor, orientation);
 	}
 
 	// We complete the frame update by using information about our content positioning
@@ -335,6 +336,7 @@ bool HoloLensTerrainGenDemoMain::Render(HolographicFrame^ holographicFrame) {
 				// Draw the sample hologram.
 				if (m_terrain) {
 					m_terrain->Render();
+					m_planeRenderer->Render();
 				}
 				else {
 					m_planeRenderer->Render();
