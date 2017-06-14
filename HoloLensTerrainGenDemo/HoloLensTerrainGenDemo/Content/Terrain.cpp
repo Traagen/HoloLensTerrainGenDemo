@@ -14,7 +14,8 @@ using namespace std::placeholders;
 
 // provide h and w in meters.
 // res is number of triangle edges per centimeter.
-Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, SpatialAnchor^ anchor, XMFLOAT4X4 orientation) :
+Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, 
+	unsigned int res, SpatialAnchor^ anchor, XMFLOAT4X4 orientation) :
 	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), 
 	m_anchor(anchor), m_height(h), m_width(w), m_orientation(orientation) {
 	// invert the z-axis of the orientation matrix because for some reason it is backwards to what we need.
@@ -657,8 +658,7 @@ bool Terrain::CaptureInteraction(SpatialInteraction^ interaction) {
 	vol.min.x = m_position.x;
 	vol.min.y = m_position.y;
 	vol.min.z = m_position.z;
-
-
+	
 	if (MathUtil::RayAABBIntersect(position, look, vol)) {
 		// if so, handle the interaction and return true.
 		m_gestureRecognizer->CaptureInteraction(interaction);

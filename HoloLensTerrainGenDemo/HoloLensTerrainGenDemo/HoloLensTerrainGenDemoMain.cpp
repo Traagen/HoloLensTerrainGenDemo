@@ -303,9 +303,6 @@ bool HoloLensTerrainGenDemoMain::Render(HolographicFrame^ holographicFrame) {
             context->ClearRenderTargetView(targets[0], DirectX::Colors::Transparent);
             context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-            //
-            // TODO: Replace the sample content with your own content.
-            //
             // Notes regarding holographic content:
             //    * For drawing, remember that you have the potential to fill twice as many pixels
             //      in a stereoscopic render target as compared to a non-stereoscopic render target
@@ -318,8 +315,6 @@ bool HoloLensTerrainGenDemoMain::Render(HolographicFrame^ holographicFrame) {
             //    * Black pixels will appear transparent to the user wearing the device, but you
             //      should still use alpha blending to draw semitransparent holograms. You should
             //      also clear the screen to Transparent as shown above.
-            //
-
 
             // The view and projection matrices for each holographic camera will change
             // every frame. This function refreshes the data in the constant buffer for

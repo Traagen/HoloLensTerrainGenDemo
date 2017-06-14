@@ -11,7 +11,8 @@ namespace HoloLensTerrainGenDemo {
 	public:
 		// provide h and w in meters.
 		// res is number of triangle edges per centimeter.
-		Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, Windows::Perception::Spatial::SpatialAnchor^ anchor, DirectX::XMFLOAT4X4 orientation);
+		Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, 
+			Windows::Perception::Spatial::SpatialAnchor^ anchor, DirectX::XMFLOAT4X4 orientation);
 		~Terrain();
 		void CreateDeviceDependentResources();
 		void ReleaseDeviceDependentResources();

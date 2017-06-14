@@ -277,16 +277,6 @@ bool SurfacePlaneRenderer::CaptureInteraction(SpatialInteraction^ interaction) {
 		return false;
 	}
 
-	// define the unit space vertices of the plane we are testing.
-	static const XMVECTOR verts[6] = {
-		{ -1.0f, -1.0f, 0.0f, 0.0f },
-		{ -1.0f,  1.0f, 0.0f, 0.0f },
-		{ 1.0f, -1.0f, 0.0f, 0.0f },
-		{ -1.0f,  1.0f, 0.0f, 0.0f },
-		{ 1.0f,  1.0f, 0.0f, 0.0f },
-		{ 1.0f, -1.0f, 0.0f, 0.0f }
-	};
-
 	// Get the user's gaze
 	auto gaze = interaction->SourceState->TryGetPointerPose(m_coordinateSystem);
 	auto head = gaze->Head;
@@ -299,55 +289,20 @@ bool SurfacePlaneRenderer::CaptureInteraction(SpatialInteraction^ interaction) {
 	float dist = D3D11_FLOAT32_MAX; // initial distance value.
 	int i = 0;
 	for (auto p : m_planeList) {
-		// build the matrices to properly orient the quad.
-		auto center = p.bounds.Center;
-		auto extents = p.bounds.Extents;
-
-		// transformation matrices to go from unit space to world space.
-		XMMATRIX modelToWorld = XMLoadFloat4x4(&m_modelToWorld);
-		XMMATRIX world = XMMatrixRotationQuaternion(XMLoadFloat4(&p.bounds.Orientation));
-		// add in the model to world transform so that the quad and gaze are in the same coordinate system.
-		world = XMMatrixMultiply(modelToWorld, world);
-		XMMATRIX scale = XMMatrixScaling(extents.x, extents.y, extents.z);
-		XMMATRIX translate = XMMatrixTranslation(center.x, center.y, center.z);
-		XMMATRIX transform = XMMatrixMultiply(scale, world);
-		transform = XMMatrixMultiply(transform, translate);
-
-		// generate oriented quad.
-		std::vector<XMFLOAT3> vertexList;
-		for (int j = 0; j < 6; ++j) {
-			XMVECTOR v = XMVector3Transform(verts[j], transform);
-			XMFLOAT3 vec;
-			XMStoreFloat3(&vec, v);
-			vertexList.push_back(vec);
-		}
-
-		// perform intersection test.
-		// if intersection test returns an intersection, check
-		// that this is the closest intersection in case the gaze intersects multiple planes.
-		// save the index of the closest plane so we can create the correct anchor onTap.
-
-		// perform 2 ray-triangle intersection tests and save the lowest value above 0.
-		float d = MathUtil::RayTriangleIntersect(position, look, 
-			float3(vertexList[0].x, vertexList[0].y, vertexList[0].z), 
-			float3(vertexList[1].x, vertexList[1].y, vertexList[1].z), 
-			float3(vertexList[2].x, vertexList[2].y, vertexList[2].z));
-
-		float d2 = MathUtil::RayTriangleIntersect(position, look,
-			float3(vertexList[3].x, vertexList[3].y, vertexList[3].z),
-			float3(vertexList[4].x, vertexList[4].y, vertexList[4].z),
-			float3(vertexList[5].x, vertexList[5].y, vertexList[5].z));
+		// the BoundingOrientedBox object has built in intersection tests we can use to test it against our
+		// gaze.
+		float d = 0;
+		XMFLOAT3 _pos = XMFLOAT3(position.x, position.y, position.z);
+		XMFLOAT3 _dir = XMFLOAT3(look.x, look.y, look.z);
+		XMVECTOR pos = XMLoadFloat3(&_pos);
+		XMVECTOR dir = XMLoadFloat3(&_dir);
+		p.bounds.Intersects(pos, dir, d);
 
 		if (d > 0 && d < dist) {
 			dist = d;
 			index = i;
 		}
-		if (d2 > 0 && d2 < dist) {
-			dist = d2;
-			index = i;
-		}
-		
-		// next plane
+
 		++i;
 	}
 
@@ -382,7 +337,7 @@ float2 SurfacePlaneRenderer::GetDimensions() {
 
 	// build the matrices to properly orient the quad.
 	auto extents = plane.bounds.Extents;
-
+	
 	return float2(extents.x, extents.y);
 }
 
