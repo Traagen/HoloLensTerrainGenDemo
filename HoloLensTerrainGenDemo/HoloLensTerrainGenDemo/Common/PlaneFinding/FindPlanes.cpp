@@ -20,16 +20,16 @@ namespace PlaneFinding
     // TODO: allow these constants to be modified at runtime, or configured by regkey to determine ideal values
     // constants for first pass generating potential planar regions
     const float cLowCurvatureThreshold = 0.1f; // vertices where the curvature is sufficiently low are consider potentially planar
-    const float cMaxDotForNeighbors = 0.89f; // vertices are considered potentially coplanar if their normals differ by some maximum angle (measured as dot product)
+	const float cMaxDotForNeighbors = 0.89f; // vertices are considered potentially coplanar if their normals differ by some maximum angle (measured as dot product)
 
                                              // constants for filtering how many potential planes are considered
     const UINT32 cMaxPlanesPerSurface = 30; // constraints on how many planes we can find in a single volume
     const UINT32 cMinVertsPerPlane = 10; // minimum vertices required for a planar region to count as a plane
-	const float cMinimumPlaneSize = 0.001; // 0.125f; // threshold for how large a plane must be when projected onto the tangent/cotangent vectors.  Measured as standard deviation of vertices, in meters.
+	const float cMinimumPlaneSize = 0.00125; // 0.125f; // threshold for how large a plane must be when projected onto the tangent/cotangent vectors.  Measured as standard deviation of vertices, in meters.
 
                                             // constants used for bucketing vertices to planes
-    const float cMaxDistanceFromPlane = 0.125f; // max distance from a plane equation for a vetex to be considered part of the plane, in meters
-    const float cMinCosAngleBetweenNormalAndPlane = 0.5f * sqrtf(3.0f); // min angle between plane and vertex normal to consider vertex part of the plane (30 degrees)
+    const float cMaxDistanceFromPlane = 0.0125f; // 0.125f // max distance from a plane equation for a vetex to be considered part of the plane, in meters
+	const float cMinCosAngleBetweenNormalAndPlane = 0.5f * sqrtf(3.0f); // min angle between plane and vertex normal to consider vertex part of the plane (30 degrees)
 
     const UINT32 INVALID_PLANE = static_cast<UINT32>(-1); // used to identify invalid planes
 

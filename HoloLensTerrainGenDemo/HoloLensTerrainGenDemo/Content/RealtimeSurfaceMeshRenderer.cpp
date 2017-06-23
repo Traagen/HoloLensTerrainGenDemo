@@ -194,7 +194,7 @@ void RealtimeSurfaceMeshRenderer::Render(bool isStereo, bool useWireframe, bool 
 	if (depthOnly) {
 		// Use the default rasterizer state as this will enable depth culling.
 		m_deviceResources->GetD3DDeviceContext()->RSSetState(m_defaultRasterizerState.Get());
-
+		
 		// Attach no pixel shader to the pipeline.
 		context->PSSetShader(nullptr, nullptr, 0);
 	} else {

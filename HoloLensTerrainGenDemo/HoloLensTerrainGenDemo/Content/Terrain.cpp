@@ -13,10 +13,9 @@ using namespace Windows::Perception::Spatial;
 using namespace std::placeholders;
 
 // provide h and w in meters.
-// res is number of triangle edges per centimeter.
 Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, 
-	unsigned int res, SpatialAnchor^ anchor, XMFLOAT4X4 orientation) :
-	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)), m_resHeightmap(res), 
+	SpatialAnchor^ anchor, XMFLOAT4X4 orientation) :
+	m_deviceResources(deviceResources), m_wHeightmap(unsigned int(w * 100)), m_hHeightmap(unsigned int(h * 100)),
 	m_anchor(anchor), m_height(h), m_width(w), m_orientation(orientation) {
 	// invert the z-axis of the orientation matrix because for some reason it is backwards to what we need.
 	m_orientation._31 *= -1;
@@ -52,8 +51,8 @@ Terrain::~Terrain() {
 
 // initializes the height map to the supplied dimensions.
 void Terrain::InitializeHeightmap() {
-	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
-	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	unsigned int h = m_hHeightmap + 1;
+	unsigned int w = m_wHeightmap + 1;
 	m_heightmap = new float[h * w];
 
 	for (auto i = 0u; i < h * w; ++i) {
@@ -71,8 +70,8 @@ void Terrain::InitializeHeightmap() {
 }
 
 void Terrain::ResetHeightMap() {
-	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
-	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	unsigned int h = m_hHeightmap + 1;
+	unsigned int w = m_wHeightmap + 1;
 
 	for (auto i = 0u; i < h * w; ++i) {
 		m_heightmap[i] = 0.0f;
@@ -84,8 +83,8 @@ void Terrain::ResetHeightMap() {
 // Basic Fault Formation Algorithm
 // FIR erosion filter
 void Terrain::IIRFilter(float filter) {
-	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
-	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	unsigned int h = m_hHeightmap + 1;
+	unsigned int w = m_wHeightmap + 1;
 	float prev;
 
 	for (int y = 1; y < h - 1; ++y) {
@@ -119,8 +118,8 @@ void Terrain::IterateFaultFormation(unsigned int treeDepth, float treeAmplitude)
 
 	// for each point in the height map, walk the BSP Tree to determine height of the point.
 	// Don't run on the edges
-	for (unsigned int y = 1; y < m_hHeightmap * m_resHeightmap; ++y) {
-		for (unsigned int x = 1; x < m_wHeightmap * m_resHeightmap; ++x) {
+	for (unsigned int y = 1; y < m_hHeightmap; ++y) {
+		for (unsigned int x = 1; x < m_wHeightmap; ++x) {
 			BSPNode* current = &root;
 			float amp = treeAmplitude;
 			float h = 0;
@@ -147,10 +146,10 @@ void Terrain::IterateFaultFormation(unsigned int treeDepth, float treeAmplitude)
 			// Use F to attenuate the amplitude of the fault by the distance from the edge.
 			// F = 0 on the edge. F = 1 in the exact center of the height map.
 			float F = CalcManhattanDistFromCenter({ (float)x, (float)y });
-			m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] += h * F;
+			m_heightmap[y * (m_wHeightmap + 1) + x] += h * F;
 			// ensure that the height value never drops below zero since that
 			// would put it beneath a surface in the real world.
-			if (m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] < 0) m_heightmap[y * (m_wHeightmap * m_resHeightmap + 1) + x] = 0;
+			if (m_heightmap[y * (m_wHeightmap + 1) + x] < 0) m_heightmap[y * (m_wHeightmap + 1) + x] = 0;
 		}
 	}
 }
@@ -160,8 +159,8 @@ void Terrain::IterateFaultFormation(unsigned int treeDepth, float treeAmplitude)
 // Dx = 1 - (|w/2 - px| / (w/2))
 // Dy = 1 - (|h/2 - py| / (h/2))
 float Terrain::CalcManhattanDistFromCenter(float2 p) {
-	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
-	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	unsigned int h = m_hHeightmap + 1;
+	unsigned int w = m_wHeightmap + 1;
 	float h2 = (float)h / 2.0f;
 	float w2 = (float)w / 2.0f;
 	float Dx = 1 - (abs(w2 - p.x) / w2);
@@ -172,8 +171,8 @@ float Terrain::CalcManhattanDistFromCenter(float2 p) {
 
 // Find the current heighest value in the terrain.
 float Terrain::FindMaxHeight() {
-	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
-	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	unsigned int h = m_hHeightmap + 1;
+	unsigned int w = m_wHeightmap + 1;
 	float max = 0.0f;
 
 	for (int y = 0; y < h; ++y) {
@@ -190,8 +189,8 @@ float Terrain::FindMaxHeight() {
 // Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
 // depth of 1 is a leaf node.
 /*void Terrain::BuildBSPTree(BSPNode* current, unsigned int depth) {
-	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
-	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	unsigned int h = m_hHeightmap + 1;
+	unsigned int w = m_wHeightmap + 1;
 	std::uniform_int_distribution<int> distX(0, w);
 	std::uniform_int_distribution<int> distY(0, h);
 	
@@ -233,8 +232,8 @@ bool Intersect(float px1, float py1, float px2, float py2, float px3, float py3,
 }
 
 void Terrain::BuildBSPTree(BSPNode *current, unsigned int depth) {
-	unsigned int h = m_hHeightmap * m_resHeightmap + 1;
-	unsigned int w = m_wHeightmap * m_resHeightmap + 1;
+	unsigned int h = m_hHeightmap + 1;
+	unsigned int w = m_wHeightmap + 1;
 	std::uniform_int_distribution<int> distX(0, w);
 	std::uniform_int_distribution<int> distY(0, h);
 	std::uniform_real_distribution<float> distL(0.0f, 1.0f);
@@ -422,10 +421,10 @@ void Terrain::Update(const DX::StepTimer& timer, SpatialCoordinateSystem^ coordi
 		DX::ThrowIfFailed(context->Map(m_hmTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedTex));
 		// Texture data on GPU may have padding added to each row so we need to
 		// take that padding into account when we upload the data.
-		unsigned int rowSpan = (m_wHeightmap * m_resHeightmap + 1) * sizeof(float);
+		unsigned int rowSpan = (m_wHeightmap + 1) * sizeof(float);
 		BYTE* mappedData = reinterpret_cast<BYTE*>(mappedTex.pData);
 		BYTE* buffer = reinterpret_cast<BYTE*>(m_heightmap);
-		for (unsigned int i = 0; i < (m_hHeightmap * m_resHeightmap + 1); ++i) {
+		for (unsigned int i = 0; i < (m_hHeightmap + 1); ++i) {
 			memcpy(mappedData, buffer, rowSpan);
 			mappedData += mappedTex.RowPitch;
 			buffer += rowSpan;
@@ -536,9 +535,9 @@ void Terrain::CreateDeviceDependentResources() {
 	task<void> shaderTaskGroup = m_usingVprtShaders ? (createPSTask && createVSTask) : (createPSTask && createVSTask && createGSTask);
 	task<void> createMeshTask = shaderTaskGroup.then([this]() {
 		// Load mesh vertices. Each vertex has a position and a color.
-		auto h = m_hHeightmap * m_resHeightmap + 1;
-		auto w = m_wHeightmap * m_resHeightmap + 1;
-		float d = 100.0f * m_resHeightmap;
+		auto h = m_hHeightmap + 1;
+		auto w = m_wHeightmap + 1;
+		float d = 100.0f;
 		std::vector<Vertex> terrainVertices;
 		for (auto i = 0u; i < h; ++i) {
 			float y = (float)i / d;
@@ -560,15 +559,15 @@ void Terrain::CreateDeviceDependentResources() {
 		std::vector<unsigned short> terrainIndices;
 		for (auto i = 0u; i < h - 1; ++i) {
 			for (auto j = 0u; j < w - 1; ++j) {
-				auto index = j + (i * h);
+				auto index = j + (i * w);
 
 				terrainIndices.push_back(index);
-				terrainIndices.push_back(index + h + 1);
-				terrainIndices.push_back(index + h);
+				terrainIndices.push_back(index + w + 1);
+				terrainIndices.push_back(index + w);
 
 				terrainIndices.push_back(index);
 				terrainIndices.push_back(index + 1);
-				terrainIndices.push_back(index + h + 1);
+				terrainIndices.push_back(index + w + 1);
 			}
 		}
 
@@ -587,8 +586,8 @@ void Terrain::CreateDeviceDependentResources() {
 		D3D11_TEXTURE2D_DESC descTex = { 0 };
 		descTex.MipLevels = 1;
 		descTex.ArraySize = 1;
-		descTex.Width = m_wHeightmap * m_resHeightmap + 1;
-		descTex.Height = m_hHeightmap * m_resHeightmap + 1;
+		descTex.Width = m_wHeightmap + 1;
+		descTex.Height = m_hHeightmap + 1;
 		descTex.Format = DXGI_FORMAT_R32_FLOAT;
 		descTex.SampleDesc.Count = 1;
 		descTex.SampleDesc.Quality = 0;
@@ -598,8 +597,8 @@ void Terrain::CreateDeviceDependentResources() {
 
 		D3D11_SUBRESOURCE_DATA dataTex = { 0 };
 		dataTex.pSysMem = m_heightmap;
-		dataTex.SysMemPitch = (m_wHeightmap * m_resHeightmap + 1) * sizeof(float);
-		dataTex.SysMemSlicePitch = (m_hHeightmap * m_resHeightmap + 1) * (m_wHeightmap * m_resHeightmap + 1) * sizeof(float);
+		dataTex.SysMemPitch = (m_wHeightmap + 1) * sizeof(float);
+		dataTex.SysMemSlicePitch = (m_hHeightmap + 1) * (m_wHeightmap + 1) * sizeof(float);
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateTexture2D(&descTex, &dataTex, &m_hmTexture));
 
 		D3D11_SHADER_RESOURCE_VIEW_DESC descSRV = {};

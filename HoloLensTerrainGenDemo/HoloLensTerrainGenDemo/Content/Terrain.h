@@ -10,8 +10,7 @@ namespace HoloLensTerrainGenDemo {
 	class Terrain {
 	public:
 		// provide h and w in meters.
-		// res is number of triangle edges per centimeter.
-		Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, unsigned int res, 
+		Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, 
 			Windows::Perception::Spatial::SpatialAnchor^ anchor, DirectX::XMFLOAT4X4 orientation);
 		~Terrain();
 		void CreateDeviceDependentResources();
@@ -80,10 +79,7 @@ namespace HoloLensTerrainGenDemo {
 		unsigned int										m_wHeightmap;
 		// height of the heighmap texture.
 		unsigned int										m_hHeightmap;
-		// resolution as measurement of number of triangle edges per centimeter.
-		// holoLens scales by 1 = 1m, so if width of surface is 0.1, that's
-		// 10cm. For resolution 4, we'd have 10*4 + 1 vertices.
-		unsigned int										m_resHeightmap;
+
 		std::default_random_engine generator;
 		// iterator for tracking iteration of terrain generator.
 		unsigned int										m_iIter = 0;

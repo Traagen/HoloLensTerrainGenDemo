@@ -338,7 +338,7 @@ float2 SurfacePlaneRenderer::GetDimensions() {
 	// build the matrices to properly orient the quad.
 	auto extents = plane.bounds.Extents;
 	
-	return float2(extents.x, extents.y);
+	return float2(extents.x * 2.0f, extents.y * 2.0f);
 }
 
 XMFLOAT4X4 SurfacePlaneRenderer::GetOrientation() {
