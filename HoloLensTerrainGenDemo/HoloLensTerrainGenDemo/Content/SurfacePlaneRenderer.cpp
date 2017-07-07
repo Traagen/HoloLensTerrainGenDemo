@@ -335,7 +335,6 @@ SpatialAnchor^ SurfacePlaneRenderer::GetAnchor() {
 float2 SurfacePlaneRenderer::GetDimensions() {
 	auto plane = m_planeList[m_intersectedPlane];
 
-	// build the matrices to properly orient the quad.
 	auto extents = plane.bounds.Extents;
 	
 	return float2(extents.x * 2.0f, extents.y * 2.0f);

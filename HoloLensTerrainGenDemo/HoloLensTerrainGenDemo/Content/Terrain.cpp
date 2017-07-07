@@ -648,17 +648,41 @@ bool Terrain::CaptureInteraction(SpatialInteraction^ interaction) {
 	auto position = head->Position;
 	auto look = head->ForwardDirection;
 
-	// calculate AABB for the terrain.
+	// define AABB for terrain.
 	MathUtil::AABB vol;
-	vol.max.x = m_position.x + m_width;
-	vol.max.y = m_position.y + m_height;
-	vol.max.z = m_position.z + FindMaxHeight();
+	vol.min.x = vol.min.y = vol.min.z = 0.0f;
+	vol.max.x = m_width;
+	vol.max.y = m_height;
+	vol.max.z = FindMaxHeight();
 
-	vol.min.x = m_position.x;
-	vol.min.y = m_position.y;
-	vol.min.z = m_position.z;
-	
-	if (MathUtil::RayAABBIntersect(position, look, vol)) {
+	// define transformation matrix to move AABB into world space.
+	XMMATRIX orientation = XMLoadFloat4x4(&m_orientation);
+	XMMATRIX modelTranslation = XMMatrixTranslationFromVector(XMLoadFloat3(&m_position));
+	XMMATRIX transform = modelTranslation * orientation;
+
+	// convert our transformation matrix to the Numerics::float4x4 format.
+	XMFLOAT4X4 trans;
+	XMStoreFloat4x4(&trans, transform);
+	float4x4 t;
+	t.m11 = trans._11;
+	t.m12 = trans._12;
+	t.m13 = trans._13;
+	t.m14 = trans._14;
+	t.m21 = trans._21;
+	t.m22 = trans._22;
+	t.m23 = trans._23;
+	t.m24 = trans._24;
+	t.m31 = trans._31;
+	t.m32 = trans._32;
+	t.m33 = trans._33;
+	t.m34 = trans._34;
+	t.m41 = trans._41;
+	t.m42 = trans._42;
+	t.m43 = trans._43;
+	t.m44 = trans._44;
+
+	// perform intersection test
+	if (MathUtil::RayOBBIntersect(position, look, vol, t)) {
 		// if so, handle the interaction and return true.
 		m_gestureRecognizer->CaptureInteraction(interaction);
 		return true;

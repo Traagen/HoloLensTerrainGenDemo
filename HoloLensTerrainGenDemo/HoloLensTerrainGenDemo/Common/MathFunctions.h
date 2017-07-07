@@ -22,8 +22,13 @@ namespace MathUtil {
 
 	// Intersect ray (p, d) with the provided AABB.
 	// uses algorithm found in Real Time Collision Detection by Christer Ericson (2005).
-	// returns true for intersection, false for no interseciton.
+	// returns true for intersection, false for no intersection.
 	bool RayAABBIntersect(float3 p, float3 d, AABB a);
+
+	// Intersect ray (p, d) with the OBB defined
+	// as an AABB and a transformation matrix.
+	// returns true for intersection, false for no intersection.
+	bool RayOBBIntersect(float3 p, float3 d, AABB a, float4x4 transform);
 
 	// Rotates a 3D vector by a quaterion. Returns the vector in the same variable.
 	void RotateVector(XMFLOAT3& vec, XMFLOAT4 quat);

@@ -153,6 +153,109 @@ bool MathUtil::RayAABBIntersect(float3 p, float3 d, MathUtil::AABB a) {
 	return true;
 }
 
+// Intersect ray (p, d) with the OBB defined
+// as an AABB and a transformation matrix.
+// returns true for intersection, false for no intersection.
+bool MathUtil::RayOBBIntersect(float3 p, float3 d, MathUtil::AABB a, float4x4 transform) {
+	float tMin = 0.0f;
+	float tMax = FLT_MAX;
+
+	float3 OBBpos = { transform.m41, transform.m42, transform.m43 };
+	// the worldspace position of the ray.
+	float3 delta = OBBpos - p;
+
+	// determine if ray intersects along xaxis of OBB.
+	float3 xaxis = { transform.m11, transform.m12, transform.m13 };
+	float e = dot(xaxis, delta);
+	float f = dot(d, xaxis);
+
+	// if f is close to 0, then ray is parallel and does not intersect.
+	if (f > -EPSILON && f < EPSILON) {
+		return false;
+	}
+
+	// compute intersection points of ray with box.
+	float t1 = (e + a.min.x) / f;
+	float t2 = (e + a.max.x) / f;
+
+	// order intersection points nearest to furthest.
+	if (t1 > t2) {
+		std::swap(t1, t2);
+	}
+
+	// compute intersection of slab intervals
+	if (t2 < tMax) {
+		tMax = t2;
+	}
+
+	if (t1 > tMin) {
+		tMin = t1;
+	}
+
+	// exit if slab interval becomes empty.
+	if (tMax < tMin) {
+		return false;
+	}
+
+	// perform same calculations for yaxis of OBB.
+	float3 yaxis = { transform.m21, transform.m22, transform.m23 };
+	e = dot(yaxis, delta);
+	f = dot(d, yaxis);
+
+	if (f > -EPSILON && f < EPSILON) {
+		return false;
+	}
+
+	t1 = (e + a.min.y) / f;
+	t2 = (e + a.max.y) / f;
+
+	if (t1 > t2) {
+		std::swap(t1, t2);
+	}
+
+	if (t2 < tMax) {
+		tMax = t2;
+	}
+
+	if (t1 > tMin) {
+		tMin = t1;
+	}
+
+	if (tMax < tMin) {
+		return false;
+	}
+
+	// perform same calculations for yaxis of OBB.
+	float3 zaxis = { transform.m31, transform.m32, transform.m33 };
+	e = dot(zaxis, delta);
+	f = dot(d, zaxis);
+
+	if (f > -EPSILON && f < EPSILON) {
+		return false;
+	}
+
+	t1 = (e + a.min.z) / f;
+	t2 = (e + a.max.z) / f;
+
+	if (t1 > t2) {
+		std::swap(t1, t2);
+	}
+
+	if (t2 < tMax) {
+		tMax = t2;
+	}
+
+	if (t1 > tMin) {
+		tMin = t1;
+	}
+
+	if (tMax < tMin) {
+		return false;
+	}
+
+	return true;
+}
+
 // Rotates a 3D vector by a quaterion. Returns the vector in the same variable.
 void MathUtil::RotateVector(XMFLOAT3& vector, XMFLOAT4 quaternion) {
 	XMVECTOR rotation = XMLoadFloat4(&quaternion);
