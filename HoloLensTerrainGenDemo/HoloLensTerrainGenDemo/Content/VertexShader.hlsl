@@ -13,9 +13,10 @@ cbuffer ViewProjectionConstantBuffer : register(b1)
 };
 
 Texture2D<float> heightmap : register(t0);
-SamplerState hmsampler : register(s0) {
-	Filter = MIN_MAG_MIP_LINEAR;
-};
+SamplerState hmsampler : register(s0);
+//SamplerState hmsampler : register(s0) {
+//	Filter = MIN_MAG_MIP_LINEAR;
+//};
 
 // Per-vertex data used as input to the vertex shader.
 struct VertexShaderInput
@@ -33,6 +34,7 @@ struct VertexShaderOutput
     min16float4 pos     : SV_POSITION;
     min16float2 uv		: TEXCOORD0;
     uint        viewId  : TEXCOORD1;  // SV_InstanceID % 2
+	float		height	: TEXCOORD2;
 };
 
 // Simple shader to do vertex processing on the GPU.
@@ -40,7 +42,8 @@ VertexShaderOutput main(VertexShaderInput input)
 {
     VertexShaderOutput output;
     float4 pos = float4(input.pos, 1.0f);
-	pos.z = heightmap.SampleLevel(hmsampler, input.uv, 0);
+	output.height = heightmap.SampleLevel(hmsampler, input.uv, 0);
+	pos.z = output.height;
 
     // Note which view this vertex has been sent to. Used for matrix lookup.
     // Taking the modulo of the instance ID allows geometry instancing to be used

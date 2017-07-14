@@ -4,6 +4,7 @@ struct GeometryShaderInput
     min16float4 pos     : SV_POSITION;
     min16float2 uv	    : TEXCOORD0;
     uint        instId  : TEXCOORD1;
+	float		height	: TEXCOORD2;
 };
 
 // Per-vertex data passed to the rasterizer.
@@ -12,6 +13,8 @@ struct GeometryShaderOutput
     min16float4 pos     : SV_POSITION;
     min16float2 uv		: TEXCOORD0;
     uint        rtvId   : SV_RenderTargetArrayIndex;
+	float		height	: TEXCOORD1;
+
 };
 
 // This geometry shader is a pass-through that leaves the geometry unmodified 
@@ -26,6 +29,7 @@ void main(triangle GeometryShaderInput input[3], inout TriangleStream<GeometrySh
         output.pos   = input[i].pos;
         output.uv	 = input[i].uv;
         output.rtvId = input[i].instId;
+		output.height = input[i].height;
         outStream.Append(output);
     }
 }

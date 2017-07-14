@@ -97,5 +97,13 @@ namespace HoloLensTerrainGenDemo {
 
 		// event token
 		Windows::Foundation::EventRegistrationToken			m_tapGestureEventToken;
+
+		// Texture data for terrain
+		Microsoft::WRL::ComPtr<ID3D11Resource>				m_texDiffuseMaps;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	m_srvDiffuseMaps;
+
+		// Samplers for terrain and texture sampling
+		Microsoft::WRL::ComPtr<ID3D11SamplerState>			m_samplerHeightMap;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState>			m_samplerTexture;
 	};
 };

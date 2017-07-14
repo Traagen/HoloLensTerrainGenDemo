@@ -3,12 +3,83 @@ struct PixelShaderInput
 {
     min16float4 pos   : SV_POSITION;
     min16float2 uv	  : TEXCOORD0;
+	float		height : TEXCOORD1;
 };
 
 Texture2D<float> heightmap : register(t0);
-SamplerState hmsampler : register(s0) {
-	Filter = MIN_MAG_MIP_LINEAR;
-};
+Texture2DArray<float4> diffuseMaps : register(t1);
+
+SamplerState hmsampler : register(s0);
+SamplerState diffsampler : register(s1);
+
+
+float4 Blend(float4 tex1, float blend1, float4 tex2, float blend2) {
+	float depth = 0.2f;
+	
+	float ma = max(tex1.a + blend1, tex2.a + blend2) - depth;
+
+	float b1 = max(tex1.a + blend1 - ma, 0);
+	float b2 = max(tex2.a + blend2 - ma, 0);
+
+	return (tex1 * b1 + tex2 * b2) / (b1 + b2);
+}
+
+float4 GetTexByHeightPlanar(float height, float2 uv, float low, float med, float high) {
+	float bounds = 0.05f;
+	float transition = 0.2f;
+	float lowBlendStart = transition - 2 * bounds;
+	float highBlendEnd = transition + 2 * bounds;
+	float4 c;
+
+	if (height < lowBlendStart) {
+		c = diffuseMaps.Sample(diffsampler, float3(uv, low));
+	}
+	else if (height < transition) {
+		float4 c1 = diffuseMaps.Sample(diffsampler, float3(uv, low));
+		float4 c2 = diffuseMaps.Sample(diffsampler, float3(uv, med));
+
+		float blend = (height - lowBlendStart) * (1.0f / (transition - lowBlendStart));
+
+		c = Blend(c1, 1 - blend, c2, blend);
+	}
+	else if (height < highBlendEnd) {
+		float4 c1 = diffuseMaps.Sample(diffsampler, float3(uv, med));
+		float4 c2 = diffuseMaps.Sample(diffsampler, float3(uv, high));
+
+		float blend = (height - transition) * (1.0f / (highBlendEnd - transition));
+
+		c = Blend(c1, 1 - blend, c2, blend);
+	}
+	else {
+		c = diffuseMaps.Sample(diffsampler, float3(uv, high));
+	}
+
+	return c;
+}
+
+float3 GetTexBySlope(float slope, float height, float2 uv) {
+	float4 c;
+	float blend;
+	if (slope < 0.6f) {
+		blend = slope / 0.6f;
+		float4 c1 = GetTexByHeightPlanar(height, uv, 0, 2, 3);
+		float4 c2 = GetTexByHeightPlanar(height, uv, 1, 2, 3);
+
+		c = Blend(c1, 1 - blend, c2, blend);
+	}
+	else if (slope < 0.7f) {
+		blend = (slope - 0.6f) * (1.0f / (0.7f - 0.6f));
+		float4 c1 = GetTexByHeightPlanar(height, uv, 1, 2, 3);
+		float4 c2 = diffuseMaps.Sample(diffsampler, float3(uv, 2));
+
+		c = Blend(c1, 1 - blend, c2, blend);
+	}
+	else {
+		c = diffuseMaps.Sample(diffsampler, float3(uv, 2));
+	}
+
+	return c.rgb;
+}
 
 float3 estimateNormal(float2 texcoord) {
 	float2 b = texcoord + float2(0.0f, -0.01f);
@@ -36,11 +107,10 @@ float3 estimateNormal(float2 texcoord) {
 	return normalize(float3(x, y, z));
 }
 
-// The pixel shader passes through the color data. The color data from 
-// is interpolated and assigned to a pixel at the rasterization step.
 min16float4 main(PixelShaderInput input) : SV_TARGET {
-	float3 color = { 0.23f, 0.72f, 0.13f };
 	float3 norm = estimateNormal(input.uv);
+	float3 color = GetTexBySlope(acos(norm.z), input.height, input.uv * 10);
+
 	float3 light = normalize(float3(1.0f, -0.5f, -1.0f));
 	float diff = saturate(dot(norm, -light));
 

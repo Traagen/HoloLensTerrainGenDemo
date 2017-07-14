@@ -3,6 +3,7 @@
 #include "Common\DirectXHelper.h"
 #include "Common\MathFunctions.h"
 #include <stdlib.h>
+#include <DDSTextureLoader.h>
 
 using namespace HoloLensTerrainGenDemo;
 using namespace Concurrency;
@@ -11,6 +12,7 @@ using namespace Windows::Foundation::Numerics;
 using namespace Windows::UI::Input::Spatial;
 using namespace Windows::Perception::Spatial;
 using namespace std::placeholders;
+using namespace Windows::Storage;
 
 // provide h and w in meters.
 Terrain::Terrain(const std::shared_ptr<DX::DeviceResources>& deviceResources, float h, float w, 
@@ -414,7 +416,7 @@ void Terrain::Update(const DX::StepTimer& timer, SpatialCoordinateSystem^ coordi
 
 	// Update the terrain generator.
 	if (m_iIter < 500) {
-		IterateFaultFormation(5, 0.002f);
+		IterateFaultFormation(5, 0.005f);
 		IIRFilter(0.1f);
 
 		D3D11_MAPPED_SUBRESOURCE mappedTex = { 0 };
@@ -462,6 +464,8 @@ void Terrain::Render() {
 	context->VSSetConstantBuffers(0, 1,	m_modelConstantBuffer.GetAddressOf());
 	// attach the heightmap
 	context->VSSetShaderResources(0, 1, m_hmSRV.GetAddressOf());
+	// attach sampler states
+	context->VSSetSamplers(0, 1, m_samplerHeightMap.GetAddressOf());
 
 	if (!m_usingVprtShaders) {
 		// On devices that do not support the D3D11_FEATURE_D3D11_OPTIONS3::
@@ -476,7 +480,12 @@ void Terrain::Render() {
 	// Attach the pixel shader.
 	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	// attach the heightmap
-	context->PSSetShaderResources(0, 1, m_hmSRV.GetAddressOf());
+	ID3D11ShaderResourceView *views[2] = { m_hmSRV.Get(), m_srvDiffuseMaps.Get() };
+	context->PSSetShaderResources(0, 2, views);
+
+	// attach sample states
+	ID3D11SamplerState *samplers[2] = { m_samplerHeightMap.Get(), m_samplerTexture.Get() };
+	context->PSSetSamplers(0, 2, samplers);
 
 	// Draw the objects.
 	context->DrawIndexedInstanced(m_indexCount,	2, 0, 0, 0);
@@ -609,15 +618,34 @@ void Terrain::CreateDeviceDependentResources() {
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateShaderResourceView(m_hmTexture.Get(), &descSRV, &m_hmSRV));
 	});
 
-	// Once the cube is loaded, the object is ready to be rendered.
-	createHeightmapTextureTask.then([this]() {
+	// Once the terrain is loaded, the object is ready to be rendered.
+	task<void> createRasterizerTask = createHeightmapTextureTask.then([this]() {
 		// Create a default rasterizer state descriptor.
 		D3D11_RASTERIZER_DESC rasterizerDesc = CD3D11_RASTERIZER_DESC(D3D11_DEFAULT);
 
 		// Create the default rasterizer state.
 		m_deviceResources->GetD3DDevice()->CreateRasterizerState(&rasterizerDesc, m_rasterizerState.GetAddressOf());
+	});
 
-		m_loadingComplete = true; 
+	task<void> loadTexturesTask = createRasterizerTask.then([this]() {
+		DX::ThrowIfFailed(CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Textures\\terrainDiffuse.dds",
+			m_texDiffuseMaps.GetAddressOf(), m_srvDiffuseMaps.GetAddressOf()));
+	});
+
+	loadTexturesTask.then([this]() {
+		// height map sampler
+		CD3D11_SAMPLER_DESC descSampler = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
+		
+		auto dev = m_deviceResources->GetD3DDevice();
+		DX::ThrowIfFailed(dev->CreateSamplerState(&descSampler, m_samplerHeightMap.GetAddressOf()));
+
+		// texture sampler
+		descSampler.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		descSampler.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+
+		DX::ThrowIfFailed(dev->CreateSamplerState(&descSampler, m_samplerTexture.GetAddressOf()));
+
+		m_loadingComplete = true;
 	});
 }
 
@@ -634,6 +662,8 @@ void Terrain::ReleaseDeviceDependentResources() {
 	m_hmTexture.Reset();
 	m_hmSRV.Reset();
 	m_rasterizerState.Reset();
+	m_texDiffuseMaps.Reset();
+	m_srvDiffuseMaps.Reset();
 }
 
 void Terrain::OnTap(SpatialGestureRecognizer^ sender, SpatialTappedEventArgs^ args) {

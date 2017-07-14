@@ -56,6 +56,9 @@
     <Filter Include="Common\PlaneFinding">
       <UniqueIdentifier>{01b5d874-8294-408a-b078-d928efb3a346}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Textures">
+      <UniqueIdentifier>{eb7a0f47-6adf-4408-b5ed-3dfb0ca1aa98}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -111,7 +114,6 @@
     <ClInclude Include="Content\BSP Tree.h">
       <Filter>Content</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h" />
     <ClInclude Include="Common\PlaneFinding\common.h">
       <Filter>Common\PlaneFinding</Filter>
     </ClInclude>
@@ -151,6 +153,7 @@
     <ClInclude Include="Common\MathFunctions.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\VertexShader.hlsl">
@@ -198,8 +201,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="HoloLensTerrainGenDemo_TemporaryKey.pfx" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="HoloLensTerrainGenDemo.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Textures\terrainDiffuse.dds">
+      <Filter>Textures</Filter>
+    </Image>
   </ItemGroup>
 </Project>
