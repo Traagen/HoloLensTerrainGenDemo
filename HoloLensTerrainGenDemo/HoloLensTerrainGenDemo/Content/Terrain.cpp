@@ -188,25 +188,6 @@ float Terrain::FindMaxHeight() {
 	return max;
 }
 
-// Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
-// depth of 1 is a leaf node.
-/*void Terrain::BuildBSPTree(BSPNode* current, unsigned int depth) {
-	unsigned int h = m_hHeightmap + 1;
-	unsigned int w = m_wHeightmap + 1;
-	std::uniform_int_distribution<int> distX(0, w);
-	std::uniform_int_distribution<int> distY(0, h);
-	
-	current->SetStartPos(distX(generator), distY(generator));
-	current->SetEndPos(distX(generator), distY(generator));
-	//current->SetStartPos(rand() % w, rand() % h);
-	//current->SetEndPos(rand() % w, rand() % h);
-
-	if (depth <= 1) return;
-
-	BuildBSPTree(current->CreateLeftChild(), depth - 1);
-	BuildBSPTree(current->CreateRightChild(), depth - 1);
-}*/
-
 // Perform intersection test between two line segments
 // take in 4 points. Make p1 and p2 the current line segment. Make p3 and p4 the one to intersect against.
 // Return A: The point of intersection. Pass by reference.
@@ -233,6 +214,8 @@ bool Intersect(float px1, float py1, float px2, float py2, float px3, float py3,
 	return true;
 }
 
+// Recursively generate a BSP Tree of specified depth for use in Fault Formation algorithm.
+// depth of 1 is a leaf node.
 void Terrain::BuildBSPTree(BSPNode *current, unsigned int depth) {
 	unsigned int h = m_hHeightmap + 1;
 	unsigned int w = m_wHeightmap + 1;
