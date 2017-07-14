@@ -80,7 +80,8 @@ namespace HoloLensTerrainGenDemo {
 		// height of the heighmap texture.
 		unsigned int										m_hHeightmap;
 
-		std::default_random_engine generator;
+		std::default_random_engine							generator;
+
 		// iterator for tracking iteration of terrain generator.
 		unsigned int										m_iIter = 0;
 		// spatial anchor
